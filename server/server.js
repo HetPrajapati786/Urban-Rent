@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 5000;
 // ─── Socket.IO Setup ───
 export const io = new Server(server, {
     cors: {
-        origin: process.env.CLIENT_URL || 'http://localhost:5173',
+        origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
         credentials: true
     }
 });
@@ -44,7 +44,7 @@ io.on('connection', (socket) => {
 
 // ─── Middleware ───
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
     credentials: true,
 }));
 
@@ -104,7 +104,7 @@ const startServer = async () => {
         console.log(`  ────────────────────`);
         console.log(`  Port:        ${PORT}`);
         console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`  Client URL:  ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+        console.log(`  Client URL:  ${process.env.CLIENT_URL || 'http://localhost:5173, http://localhost:5174'}`);
         console.log(`  Health:      http://localhost:${PORT}/api/health\n`);
     });
 };
