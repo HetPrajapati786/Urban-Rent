@@ -35,6 +35,7 @@ import DemoRoleSelect from './pages/DemoRoleSelect';
 import TenantBlogs from './pages/tenant/TenantBlogs';
 import TenantBlogDetails from './pages/tenant/TenantBlogDetails';
 import ManagerBlogs from './pages/manager/ManagerBlogs';
+import ManagerBlogDetails from './pages/manager/ManagerBlogDetails';
 import AdminBlogEditor from './pages/admin/AdminBlogEditor';
 
 // Components
@@ -199,6 +200,14 @@ function App() {
           element={
             <ProtectedRoute role="manager">
               <ManagerBlogs />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/blogs/:slug"
+          element={
+            <ProtectedRoute role="manager">
+              <ManagerBlogDetails />
             </ProtectedRoute>
           }
         />

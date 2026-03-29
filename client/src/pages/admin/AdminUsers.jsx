@@ -23,42 +23,50 @@ export default function AdminUsers() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('all');
     const [search, setSearch] = useState('');
-    const [deletingId, setDeletingId] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
+    
+    // Modal state
+    const [modal, setModal] = useState({ open: false, type: '', user: null, error: '' });
 
-    const handleDeleteUser = async (user) => {
-        if (!window.confirm(`Delete ${user.firstName} ${user.lastName}? ${user.role === 'manager' ? 'All their properties will also be deleted.' : ''} This cannot be undone.`)) return;
-        setDeletingId(user._id);
-        try {
-            await apiDelete(`/admin/users/${user._id}`);
-            fetchUsers();
-        } catch (err) {
-            alert('Failed: ' + err.message);
-        } finally {
-            setDeletingId(null);
-        }
+    const openModal = (type, user) => setModal({ open: true, type, user, error: '' });
+    const closeModal = () => {
+        if (!actionLoading) setModal({ open: false, type: '', user: null, error: '' });
     };
 
-    const handleLoginAs = (user) => {
-        if (!window.confirm(`Login as ${user.firstName} (${user.role})? You will be navigated to their dashboard.`)) return;
-        localStorage.setItem('urbanrent_impersonate', user.clerkId);
+    const handleConfirmAction = async () => {
+        const { type, user } = modal;
+        if (!user) return;
         
-        let target = '';
-        if (user.role === 'tenant') {
-            target = isDemo ? '/demo/tenant' : '/tenant/properties';
-        } else {
-            target = isDemo ? '/demo/manager' : '/manager/dashboard';
-        }
-        window.open(target, '_blank');
-    };
-
-    const handleToggleStatus = async (user) => {
-        const action = user.isActive ? 'Suspend' : 'Activate';
-        if (!window.confirm(`${action} user ${user.firstName}?`)) return;
+        setActionLoading(true);
         try {
-            await apiPatch(`/admin/users/${user._id}/status`);
-            fetchUsers();
+            if (type === 'delete') {
+                await apiDelete(`/admin/users/${user._id}`);
+                fetchUsers();
+                closeModal();
+            } else if (type === 'status') {
+                await apiPatch(`/admin/users/${user._id}/status`);
+                fetchUsers();
+                closeModal();
+            } else if (type === 'login') {
+                localStorage.setItem('urbanrent_impersonate', user.clerkId);
+                localStorage.setItem('urbanrent_impersonate_data', JSON.stringify({
+                    name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User',
+                    avatar: user.avatar || '',
+                    role: user.role || ''
+                }));
+                let target = '';
+                if (user.role === 'tenant') {
+                    target = isDemo ? '/demo/tenant/dashboard' : '/tenant/dashboard';
+                } else {
+                    target = isDemo ? '/demo/manager/dashboard' : '/manager/dashboard';
+                }
+                window.open(target, '_blank');
+                closeModal();
+            }
         } catch (err) {
-            alert('Failed: ' + err.message);
+            setModal(prev => ({ ...prev, error: err.message || 'Operation failed' }));
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -210,7 +218,7 @@ export default function AdminUsers() {
                                             {user.role !== 'admin' && (
                                                 <>
                                                     <button
-                                                        onClick={() => handleLoginAs(user)}
+                                                        onClick={() => openModal('login', user)}
                                                         className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-all"
                                                         title="Login as User"
                                                     >
@@ -218,7 +226,7 @@ export default function AdminUsers() {
                                                     </button>
                                                     
                                                     <button
-                                                        onClick={() => handleToggleStatus(user)}
+                                                        onClick={() => openModal('status', user)}
                                                         className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
                                                             user.isActive 
                                                                 ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' 
@@ -229,11 +237,10 @@ export default function AdminUsers() {
                                                     </button>
 
                                                     <button
-                                                        onClick={() => handleDeleteUser(user)}
-                                                        disabled={deletingId === user._id}
-                                                        className="px-2.5 py-1.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg border border-red-200 hover:bg-red-100 transition-all disabled:opacity-50"
+                                                        onClick={() => openModal('delete', user)}
+                                                        className="px-2.5 py-1.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg border border-red-200 hover:bg-red-100 transition-all"
                                                     >
-                                                        {deletingId === user._id ? '...' : 'Delete'}
+                                                        Delete
                                                     </button>
                                                 </>
                                             )}
@@ -246,6 +253,74 @@ export default function AdminUsers() {
                 </div>
                 </div>
             </div>
+
+            {/* Action Modal */}
+            {modal.open && modal.user && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={closeModal}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                modal.type === 'delete' ? 'bg-red-100 text-red-600' :
+                                modal.type === 'login' ? 'bg-indigo-100 text-indigo-600' :
+                                'bg-amber-100 text-amber-600'
+                            }`}>
+                                {modal.type === 'delete' ? (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                ) : modal.type === 'login' ? (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                ) : (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-dark-900 leading-tight">
+                                    {modal.type === 'delete' ? 'Delete User' : modal.type === 'login' ? 'Impersonate User' : `${modal.user.isActive ? 'Suspend' : 'Activate'} User`}
+                                </h3>
+                                <p className="text-sm font-bold text-dark-600">{modal.user.firstName} {modal.user.lastName}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="text-sm text-dark-500 mb-6 bg-dark-50 p-4 rounded-xl border border-dark-100 leading-relaxed font-medium">
+                            {modal.type === 'delete' ? (
+                                <>This will permanently delete <span className="text-dark-900 font-bold">{modal.user.email}</span>.{modal.user.role === 'manager' && ' All their listed properties and related data will also be irrevocably deleted.'} This cannot be undone.</>
+                            ) : modal.type === 'login' ? (
+                                <>A new window will open securely logging you into the {modal.user.role} dashboard as <span className="text-dark-900 font-bold">{modal.user.firstName}</span>. All actions taken will be recorded under your admin session.</>
+                            ) : (
+                                <>Are you sure you want to {modal.user.isActive ? 'suspend' : 'reactivate'} this user? {modal.user.isActive ? 'They will not be able to log in or access features.' : 'They will regain full access to the platform immediately.'}</>
+                            )}
+                        </div>
+
+                        {modal.error && (
+                            <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200">
+                                {modal.error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={closeModal}
+                                disabled={actionLoading}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-dark-600 bg-white border border-dark-200 hover:bg-dark-50 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmAction}
+                                disabled={actionLoading}
+                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 ${
+                                    modal.type === 'delete' ? 'bg-red-600 hover:bg-red-700 shadow-red-600/20' :
+                                    modal.type === 'login' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20' :
+                                    'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                                }`}
+                            >
+                                {actionLoading ? (
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : modal.type === 'delete' ? 'Delete' : modal.type === 'login' ? 'Login As' : 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

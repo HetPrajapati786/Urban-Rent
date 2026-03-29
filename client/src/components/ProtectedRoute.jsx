@@ -19,6 +19,15 @@ export default function ProtectedRoute({ children, role }) {
     const { isLoaded, isSignedIn } = useAuth();
     const { user } = useUser();
 
+    // Check for admin impersonation bypass BEFORE clerk auth checks
+    const adminSession = localStorage.getItem('urbanrent_admin');
+    const impersonating = localStorage.getItem('urbanrent_impersonate');
+    const isAdminImpersonating = !!(adminSession && impersonating);
+
+    if (isAdminImpersonating) {
+        return children;
+    }
+
     // Still loading auth state
     if (!isLoaded) {
         return (

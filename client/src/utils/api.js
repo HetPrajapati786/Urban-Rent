@@ -5,9 +5,11 @@ const API_BASE = 'http://localhost:5000/api';
  * Returns 'demo-manager' for demo mode (no Clerk session).
  */
 const getClerkUserId = () => {
+    const isAdminRoute = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/demo/admin');
+
     // Check for active impersonation
     const impersonatedId = localStorage.getItem('urbanrent_impersonate');
-    if (impersonatedId) {
+    if (impersonatedId && !isAdminRoute) {
         return impersonatedId;
     }
 

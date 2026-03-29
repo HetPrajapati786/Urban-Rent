@@ -128,7 +128,7 @@ export default function ManagerBlogs() {
                     <div className="flex flex-col gap-5 lg:gap-6">
                         {blogs.map((blog, idx) => (
                             <div key={blog._id} className="animate-fade-in" style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'both' }}>
-                                <BlogCard blog={blog} userRole="manager" basePath="/tenant/blogs" />
+                                <BlogCard blog={blog} userRole="manager" basePath="/manager/blogs" />
                             </div>
                         ))}
                     </div>

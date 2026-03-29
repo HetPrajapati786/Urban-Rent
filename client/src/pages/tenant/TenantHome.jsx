@@ -92,44 +92,18 @@ export default function TenantHome() {
     return (
         <TenantLayout>
             {/* Hero Section */}
-            <div className="relative bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900 rounded-3xl p-8 sm:p-14 mb-10 overflow-hidden shadow-2xl">
-                <div className="absolute inset-0 opacity-10">
+            <div className="relative bg-gradient-to-br from-dark-900 via-dark-800 to-primary-900 rounded-3xl px-8 mb-10 overflow-hidden shadow-xl h-[160px] sm:h-[200px] flex flex-col justify-center items-center text-center">
+                <div className="absolute inset-0 opacity-20 pointer-events-none">
                     <div className="absolute -right-20 -top-20 w-80 h-80 bg-primary-500 rounded-full blur-3xl" />
                     <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-primary-400 rounded-full blur-2xl" />
                 </div>
-                <div className="relative max-w-3xl mx-auto text-center">
-                    <h1 className="text-4xl sm:text-5xl font-black text-white mb-4 leading-tight tracking-tight">
+                <div className="relative z-10">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight tracking-tight">
                         Find Your Perfect <span className="text-primary-400">Home</span>
                     </h1>
-                    <p className="text-dark-300 text-sm sm:text-base mb-8 max-w-xl mx-auto">
-                        Browse hundreds of properties from verified managers across the city with our premium network.
+                    <p className="text-dark-300 text-sm sm:text-base mt-2 font-medium">
+                        Browse top-tier verified rental properties.
                     </p>
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto">
-                        <div className="relative flex-1">
-                            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dark-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Search by city, area or property name..."
-                                className="w-full pl-12 pr-4 py-4 bg-white/10 backdrop-blur-md rounded-2xl text-sm text-white placeholder-dark-300 border border-white/10 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/20 shadow-lg transition-all"
-                            />
-                        </div>
-                        <button type="submit" className="px-8 py-4 bg-primary-500 text-white rounded-2xl font-bold text-sm hover:bg-primary-600 transition-all shadow-lg hover:shadow-primary-500/30 active:scale-95">
-                            Search
-                        </button>
-                    </form>
-                    <div className="flex gap-2.5 mt-6 flex-wrap justify-center">
-                        {['Ahmedabad', 'Surat', 'Mumbai', 'Pune'].map(city => (
-                            <Link
-                                key={city}
-                                to={`${base}/search?q=${city}`}
-                                className="px-4 py-1.5 bg-dark-800/50 text-dark-300 border border-dark-700 text-xs font-semibold rounded-full hover:bg-dark-700 hover:text-white transition-all backdrop-blur-sm"
-                            >
-                                {city}
-                            </Link>
-                        ))}
-                    </div>
                 </div>
             </div>
 

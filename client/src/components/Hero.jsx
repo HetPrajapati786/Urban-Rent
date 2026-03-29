@@ -87,11 +87,9 @@ export default function Hero() {
 
                         {/* Heading */}
                         <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] mb-6 animate-slide-up">
-                            Find Your Perfect Home, 
+                            Find Spaces That Fit , 
                             <br />
-                            <span className="gradient-text">One Rental</span>
-                            <br />
-                            at a Time.
+                            <span className="gradient-text">Your Life & Business</span>
                         </h1>
 
                         {/* Subheading */}

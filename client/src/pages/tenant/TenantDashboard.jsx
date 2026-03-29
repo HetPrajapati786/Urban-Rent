@@ -27,11 +27,11 @@ const DEMO_STATS = [
         color: 'bg-emerald-50 text-emerald-600' 
     },
     { 
-        label: 'Messages', 
-        value: '2', 
+        label: 'Your Next Payment', 
+        value: '...', 
         icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
         ), 
         color: 'bg-amber-50 text-amber-600' 
@@ -127,6 +127,9 @@ export default function TenantDashboard() {
     const isDemo = location.pathname.startsWith('/demo');
     const base = isDemo ? '/demo/tenant' : '/tenant';
 
+    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
+
     const [applications, setApplications] = useState([]);
     const [stats, setStats] = useState(DEMO_STATS);
     const [suggestedProperty, setSuggestedProperty] = useState(null);
@@ -157,13 +160,41 @@ export default function TenantDashboard() {
                 setSuggestedProperty(availableProps[Math.floor(Math.random() * availableProps.length)]);
             }
 
+            // Calculate next payment
+            let nextPaymentAmount = 0;
+            let nextPaymentDate = 'No payments due';
+            let nextPaymentColor = 'bg-emerald-50 text-emerald-600';
+            
+            const unpaidApps = apps.filter(a => a.status === 'approved' && a.invoice && a.invoice.status !== 'paid');
+            if (unpaidApps.length > 0) {
+                // sort by due date
+                const sorted = unpaidApps.sort((a, b) => new Date(a.invoice.dueDate || Date.now()) - new Date(b.invoice.dueDate || Date.now()));
+                const nextApp = sorted[0];
+                nextPaymentAmount = nextApp.invoice?.amount || nextApp.property?.pricing?.monthlyRent || 0;
+                if (nextApp.invoice?.dueDate) {
+                    const dueDate = new Date(nextApp.invoice.dueDate);
+                    nextPaymentDate = `Due: ${dueDate.toLocaleDateString()}`;
+                    const isOverdue = dueDate < new Date();
+                    if (isOverdue) nextPaymentColor = 'bg-red-50 text-red-600';
+                    else nextPaymentColor = 'bg-amber-50 text-amber-600';
+                } else {
+                    nextPaymentDate = 'Pending';
+                    nextPaymentColor = 'bg-amber-50 text-amber-600';
+                }
+            }
+
             // Update stats
             try {
                 const favData = await apiGet('/users/favourites');
                 setStats([
                     { label: 'Saved', value: favData.savedIds?.length || 0, icon: DEMO_STATS[0].icon, color: DEMO_STATS[0].color },
                     { label: 'Applications', value: apps.length, icon: DEMO_STATS[1].icon, color: DEMO_STATS[1].color },
-                    { label: 'Messages', value: 0, icon: DEMO_STATS[2].icon, color: DEMO_STATS[2].color }, // Optional backend message count logic can be placed here
+                    { 
+                        label: nextPaymentDate, 
+                        value: nextPaymentAmount > 0 ? `₹${nextPaymentAmount.toLocaleString()}` : '₹0', 
+                        icon: DEMO_STATS[2].icon,
+                        color: nextPaymentColor 
+                    },
                 ]);
             } catch { }
 
@@ -221,31 +252,20 @@ export default function TenantDashboard() {
         <TenantLayout
             breadcrumbs={[{ label: 'Home' }]}
         >
-            {/* Welcome Banner */}
-            <div className="relative bg-gradient-to-r from-primary-600 to-primary-500 rounded-2xl p-6 sm:p-8 mb-8 overflow-hidden">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute -right-10 -top-10 w-64 h-64 bg-white rounded-full" />
-                    <div className="absolute -right-5 -bottom-20 w-48 h-48 bg-white rounded-full" />
-                </div>
-                <div className="relative">
-                    <p className="text-primary-100 text-sm font-medium mb-1">Welcome back</p>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                        {user?.firstName || 'Tenant'}!
+            <div className="pb-20">
+                {/* Welcome */}
+                <div className="mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-dark-900 mb-1">
+                        Welcome back, {isImpersonating && impersonatedData?.name ? (
+                            <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
+                        ) : user?.firstName ? (
+                            <span className="text-primary-600">{user.firstName}</span>
+                        ) : 'Tenant'}
                     </h1>
-                    <p className="text-primary-100 text-sm max-w-md mb-5">
+                    <p className="text-dark-500">
                         Your rental journey starts here. Browse verified properties, save your favourites, and apply with ease.
                     </p>
-                    <Link
-                        to={`${base}/properties`}
-                        className="inline-flex items-center gap-2 bg-white text-primary-700 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-50 transition-colors shadow-md"
-                    >
-                        Browse Properties
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                        </svg>
-                    </Link>
                 </div>
-            </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -512,6 +532,7 @@ export default function TenantDashboard() {
                     </div>
                 </div>
             )}
+            </div>
         </TenantLayout>
     );
 }

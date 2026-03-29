@@ -31,6 +31,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
     };
 
     const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
 
     const resolvePath = (path) => isDemo ? `/demo${path}` : path;
 
@@ -58,6 +59,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                     <button 
                         onClick={() => {
                             localStorage.removeItem('urbanrent_impersonate');
+                            localStorage.removeItem('urbanrent_impersonate_data');
                             window.location.href = isDemo ? '/demo/admin/users' : '/admin/users';
                         }}
                         className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md transition-colors"
@@ -77,26 +79,48 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                 isDemo={isDemo}
                 brandLink={isDemo ? '/demo/manager' : '/manager/dashboard'}
                 bottomContent={(expanded) => (
-                    <SignedIn>
-                        <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`}>
-                            <UserButton
-                                afterSignOutUrl="/"
-                                appearance={{
-                                    elements: {
-                                        avatarBox: expanded ? 'w-10 h-10 border border-dark-200 shadow-sm' : 'w-10 h-10 border border-dark-200 shadow-sm',
-                                    },
-                                }}
-                            />
+                    isImpersonating ? (
+                        <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`} title="Impersonating">
+                            <div className={`rounded-full border border-indigo-500 overflow-hidden flex-shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.5)] bg-dark-50 ${expanded ? 'w-10 h-10' : 'w-10 h-10'}`}>
+                                {impersonatedData?.avatar ? (
+                                    <img src={impersonatedData.avatar} alt="User" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-indigo-400 font-bold text-sm bg-indigo-500/10">
+                                        {(impersonatedData?.name?.[0] || 'I').toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
                             {expanded && (
                                 <div className="flex flex-col overflow-hidden">
-                                    <span className="text-xs font-bold tracking-wider text-white/50 uppercase">Account</span>
-                                    <span className="text-sm font-semibold text-white truncate">
-                                        {user ? user.firstName || user.fullName : 'Manager Profile'}
+                                    <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase">Impersonating</span>
+                                    <span className="text-sm font-bold text-white truncate max-w-[120px]">
+                                        {impersonatedData?.name || 'User'}
                                     </span>
                                 </div>
                             )}
                         </div>
-                    </SignedIn>
+                    ) : (
+                        <SignedIn>
+                            <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`}>
+                                <UserButton
+                                    afterSignOutUrl="/"
+                                    appearance={{
+                                        elements: {
+                                            avatarBox: expanded ? 'w-10 h-10 border border-dark-200 shadow-sm' : 'w-10 h-10 border border-dark-200 shadow-sm',
+                                        },
+                                    }}
+                                />
+                                {expanded && (
+                                    <div className="flex flex-col overflow-hidden">
+                                        <span className="text-xs font-bold tracking-wider text-white/50 uppercase">Account</span>
+                                        <span className="text-sm font-semibold text-white truncate max-w-[120px]">
+                                            {user ? user.firstName || user.fullName : 'Manager Profile'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </SignedIn>
+                    )
                 )}
             />
 
@@ -123,7 +147,9 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                                 </nav>
                             ) : (
                                 <div className="flex-shrink-0 font-bold text-dark-900 flex items-center gap-2 text-lg">
-                                Welcome back, {user?.firstName ? (
+                                    Welcome back, {isImpersonating && impersonatedData?.name ? (
+                                        <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
+                                    ) : user?.firstName ? (
                                         <span className="text-blue-600">{user.firstName}</span>
                                     ) : 'Manager'}
                                 </div>
@@ -131,8 +157,8 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
 
                             {/* Right Actions */}
                             <div className="flex items-center gap-4 ml-auto sm:ml-0">
-                                <span className="hidden sm:inline-block px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                    Manager Profile
+                                <span className={`hidden sm:inline-block px-3 py-1 border rounded-lg text-[10px] font-black uppercase tracking-wider ${isImpersonating ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                                    {isImpersonating ? 'Impersonating Manager' : 'Manager Profile'}
                                 </span>
                                 <div className="flex items-center gap-2">
                                     <NotificationDropdown />

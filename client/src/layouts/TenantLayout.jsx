@@ -34,6 +34,7 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
 
     const isDemo = location.pathname.startsWith('/demo');
     const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
     const resolvePath = (path) => isDemo ? `/demo${path}` : path;
 
     const navItems = [
@@ -69,6 +70,7 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
                     <button 
                         onClick={() => {
                             localStorage.removeItem('urbanrent_impersonate');
+                            localStorage.removeItem('urbanrent_impersonate_data');
                             window.location.href = isDemo ? '/demo/admin/users' : '/admin/users';
                         }}
                         className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md transition-colors"
@@ -89,26 +91,48 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
                 brandLink={isDemo ? '/demo/tenant/dashboard' : '/tenant/dashboard'}
                 bottomContent={(expanded) => (
                     <>
-                        <SignedIn>
-                            <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`}>
-                                <UserButton
-                                    afterSignOutUrl="/"
-                                    appearance={{
-                                        elements: {
-                                            avatarBox: expanded ? 'w-10 h-10 border border-dark-200 shadow-sm' : 'w-10 h-10 border border-dark-200 shadow-sm',
-                                        },
-                                    }}
-                                />
+                        {isImpersonating ? (
+                            <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`} title="Impersonating">
+                                <div className={`rounded-full border border-indigo-500 overflow-hidden flex-shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.5)] bg-dark-50 ${expanded ? 'w-10 h-10' : 'w-10 h-10'}`}>
+                                    {impersonatedData?.avatar ? (
+                                        <img src={impersonatedData.avatar} alt="User" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-indigo-400 font-bold text-sm bg-indigo-500/10">
+                                            {(impersonatedData?.name?.[0] || 'I').toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
                                 {expanded && (
                                     <div className="flex flex-col overflow-hidden">
-                                        <span className="text-xs font-bold tracking-wider text-white/50 uppercase">Account</span>
-                                        <span className="text-sm font-semibold text-white truncate">
-                                            {user ? user.firstName || user.fullName : 'Tenant Profile'}
+                                        <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase">Impersonating</span>
+                                        <span className="text-sm font-bold text-white truncate max-w-[120px]">
+                                            {impersonatedData?.name || 'User'}
                                         </span>
                                     </div>
                                 )}
                             </div>
-                        </SignedIn>
+                        ) : (
+                            <SignedIn>
+                                <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`}>
+                                    <UserButton
+                                        afterSignOutUrl="/"
+                                        appearance={{
+                                            elements: {
+                                                avatarBox: expanded ? 'w-10 h-10 border border-dark-200 shadow-sm' : 'w-10 h-10 border border-dark-200 shadow-sm',
+                                            },
+                                        }}
+                                    />
+                                    {expanded && (
+                                        <div className="flex flex-col overflow-hidden">
+                                            <span className="text-xs font-bold tracking-wider text-white/50 uppercase">Account</span>
+                                            <span className="text-sm font-semibold text-white truncate max-w-[120px]">
+                                                {user ? user.firstName || user.fullName : 'Tenant Profile'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </SignedIn>
+                        )}
                         <SignedOut>
                             {expanded ? (
                                 <SignInButton mode="modal">
@@ -152,7 +176,9 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
                             </nav>
                         ) : (
                             <div className="flex-shrink-0 font-bold text-dark-900 flex items-center gap-2 text-lg">
-                                Welcome back, {user?.firstName ? (
+                                Welcome back, {isImpersonating && impersonatedData?.name ? (
+                                    <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
+                                ) : user?.firstName ? (
                                     <span className="text-primary-600">{user.firstName}</span>
                                 ) : 'Tenant'}
                             </div>
@@ -186,13 +212,22 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
 
                             {/* Icons and Tags */}
                             <div className="flex items-center gap-3 flex-shrink-0">
-                                <SignedIn>
-                                    <span className="hidden sm:inline-block px-3 py-1 bg-primary-50 border border-primary-100 text-primary-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                    Tenant Profile
+                                <span className={`hidden sm:inline-block px-3 py-1 border rounded-lg text-[10px] font-black uppercase tracking-wider ${isImpersonating ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-primary-50 border-primary-100 text-primary-700'}`}>
+                                    {isImpersonating ? 'Impersonating Tenant' : 'Tenant Profile'}
                                 </span>
-                                    <NotificationDropdown />
-                                    <ChatWidget />
-                                </SignedIn>
+                                {isImpersonating ? (
+                                    <div className="flex items-center gap-2">
+                                        <NotificationDropdown />
+                                        <ChatWidget />
+                                    </div>
+                                ) : (
+                                    <SignedIn>
+                                        <div className="flex items-center gap-2">
+                                            <NotificationDropdown />
+                                            <ChatWidget />
+                                        </div>
+                                    </SignedIn>
+                                )}
                             </div>
                         </div>
                     </header>

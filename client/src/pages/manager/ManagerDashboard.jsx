@@ -11,6 +11,8 @@ export default function ManagerDashboard() {
     const [respondingId, setRespondingId] = useState(null);
 
     const isDemo = window.location.pathname.startsWith('/demo');
+    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
 
     useEffect(() => {
         const fetchDashboard = async () => {
@@ -148,7 +150,11 @@ export default function ManagerDashboard() {
             {/* Welcome */}
             <div className="mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-dark-900 mb-1">
-                    Welcome back, {user?.firstName || 'Manager'}
+                    Welcome back, {isImpersonating && impersonatedData?.name ? (
+                        <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
+                    ) : user?.firstName ? (
+                        <span className="text-blue-600">{user.firstName}</span>
+                    ) : 'Manager'}
                 </h1>
                 <p className="text-dark-500">
                     Here's an overview of your properties and activity.
