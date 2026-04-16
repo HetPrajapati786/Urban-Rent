@@ -33,6 +33,23 @@ const userSchema = new mongoose.Schema(
         applications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Application' }],
 
         isActive: { type: Boolean, default: true },
+
+        // Deletion tracking - permanently blocks all access
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date },
+
+        // Suspension details
+        suspendedAt: { type: Date },
+        suspendedReason: { type: String, default: '' },
+
+        // Reactivation requests from suspended users
+        reactivationRequests: [{
+            message: { type: String, required: true },
+            status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+            adminResponse: { type: String },
+            requestedAt: { type: Date, default: Date.now },
+            respondedAt: { type: Date },
+        }],
     },
     { timestamps: true }
 );

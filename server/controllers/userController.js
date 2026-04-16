@@ -37,9 +37,21 @@ export const handleClerkWebhook = async (req, res) => {
             case 'user.created': {
                 const existing = await User.findOne({ clerkId: data.id });
                 if (!existing) {
+                    const incomingEmail = data.email_addresses?.[0]?.email_address || '';
+
+                    // If a deleted user exists with the same email, anonymize the old record
+                    if (incomingEmail) {
+                        const deletedUser = await User.findOne({ email: incomingEmail, isDeleted: true });
+                        if (deletedUser) {
+                            deletedUser.email = `deleted_${deletedUser._id}@removed.urbanrent.com`;
+                            await deletedUser.save();
+                            console.log(`Anonymized deleted user email for re-registration: ${deletedUser._id}`);
+                        }
+                    }
+
                     await User.create({
                         clerkId: data.id,
-                        email: data.email_addresses?.[0]?.email_address || '',
+                        email: incomingEmail,
                         firstName: data.first_name || '',
                         lastName: data.last_name || '',
                         avatar: data.image_url || '',
@@ -133,6 +145,14 @@ export const syncUser = async (req, res) => {
         let user = await User.findOne({ clerkId });
 
         if (user) {
+            // If the user was previously deleted, block them
+            if (user.isDeleted) {
+                return res.status(403).json({ 
+                    error: 'This account has been permanently removed.',
+                    deleted: true,
+                });
+            }
+
             // Update existing
             user.email = email;
             user.firstName = firstName || user.firstName;
@@ -141,7 +161,24 @@ export const syncUser = async (req, res) => {
             if (role && !user.role) user.role = role;
             await user.save();
         } else {
-            // Create new
+            // Check if there's a deleted record with the same email
+            // If so, anonymize the old record to free up the email for the new account
+            const deletedUserWithEmail = await User.findOne({ email, isDeleted: true });
+            if (deletedUserWithEmail) {
+                deletedUserWithEmail.email = `deleted_${deletedUserWithEmail._id}@removed.urbanrent.com`;
+                await deletedUserWithEmail.save();
+            }
+
+            // Also check for a suspended (but not deleted) user with same email but different clerkId
+            // This means the user signed up with a new Clerk account - treat as new user
+            const suspendedUserWithEmail = await User.findOne({ email, clerkId: { $ne: clerkId }, isDeleted: false });
+            if (suspendedUserWithEmail && !suspendedUserWithEmail.isActive) {
+                // This old suspended account is being abandoned since user created new Clerk account
+                suspendedUserWithEmail.email = `abandoned_${suspendedUserWithEmail._id}@removed.urbanrent.com`;
+                await suspendedUserWithEmail.save();
+            }
+
+            // Create new fresh account
             user = await User.create({
                 clerkId,
                 email,
@@ -237,6 +274,97 @@ export const getManagers = async (req, res) => {
         );
 
         res.json({ managers: result });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * GET /api/users/suspension-status
+ * Check if the current user is suspended or deleted (works for inactive users too)
+ */
+export const getSuspensionStatus = async (req, res) => {
+    try {
+        const clerkId = req.headers['x-clerk-user-id'];
+        if (!clerkId) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+
+        const user = await User.findOne({ clerkId }).select('isActive isDeleted suspendedAt suspendedReason reactivationRequests');
+        if (!user) {
+            return res.json({ suspended: false, deleted: false });
+        }
+
+        // Permanently deleted - no recovery
+        if (user.isDeleted) {
+            return res.json({
+                suspended: true,
+                deleted: true,
+                reason: user.suspendedReason || 'Your account has been permanently removed.',
+            });
+        }
+
+        // Suspended - can request reactivation
+        if (!user.isActive) {
+            return res.json({
+                suspended: true,
+                deleted: false,
+                suspendedAt: user.suspendedAt,
+                reason: user.suspendedReason,
+                reactivationRequests: user.reactivationRequests || [],
+            });
+        }
+
+        res.json({ suspended: false, deleted: false });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * POST /api/users/reactivation-request
+ * Submit a reactivation request (for suspended users)
+ */
+export const submitReactivationRequest = async (req, res) => {
+    try {
+        const clerkId = req.headers['x-clerk-user-id'];
+        if (!clerkId) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+
+        const { message } = req.body;
+        if (!message || message.trim().length < 10) {
+            return res.status(400).json({ error: 'Please provide a detailed message (at least 10 characters).' });
+        }
+
+        const user = await User.findOne({ clerkId });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        if (user.isDeleted) {
+            return res.status(403).json({ error: 'This account has been permanently removed. Reactivation is not available.' });
+        }
+
+        if (user.isActive) {
+            return res.status(400).json({ error: 'Your account is already active.' });
+        }
+
+        // Check if there's already a pending request
+        const hasPending = user.reactivationRequests.some(r => r.status === 'pending');
+        if (hasPending) {
+            return res.status(400).json({ error: 'You already have a pending reactivation request. Please wait for admin review.' });
+        }
+
+        user.reactivationRequests.push({
+            message: message.trim(),
+            status: 'pending',
+            requestedAt: new Date(),
+        });
+
+        await user.save();
+
+        res.json({ message: 'Reactivation request submitted successfully. An administrator will review your request.' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

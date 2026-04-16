@@ -43,6 +43,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminGuard from './components/AdminGuard';
 import UserSync from './components/UserSync';
 import SmartToaster from './components/SmartToaster';
+import SuspensionGuard from './components/SuspensionGuard';
 
 /**
  * PostLoginRedirect — After Clerk sign-in, redirect user based on role.
@@ -67,6 +68,7 @@ function App() {
       <Toaster position="top-right" />
       <SmartToaster userRole={userRole} />
       <UserSync />
+      <SuspensionGuard />
       <Routes>
         {/* Public — Landing Page */}
         <Route path="/" element={<LandingPage />} />

@@ -54,6 +54,23 @@ const getHeaders = (isJson = true) => {
 };
 
 /**
+ * Shared error handler - detects suspension/deletion from API 403 responses
+ */
+const handleApiError = (res, err) => {
+    if (res.status === 403) {
+        if (err.deleted) {
+            window.dispatchEvent(new CustomEvent('user-deleted-api', {
+                detail: { reason: err.error }
+            }));
+        } else if (err.suspended) {
+            window.dispatchEvent(new CustomEvent('user-suspended-api', {
+                detail: { reason: err.reason, suspendedAt: err.suspendedAt }
+            }));
+        }
+    }
+};
+
+/**
  * GET request
  */
 export const apiGet = async (path) => {
@@ -62,6 +79,7 @@ export const apiGet = async (path) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -78,6 +96,7 @@ export const apiPost = async (path, body) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -89,11 +108,12 @@ export const apiPost = async (path, body) => {
 export const apiPostForm = async (path, formData) => {
     const res = await fetch(`${API_BASE}${path}`, {
         method: 'POST',
-        headers: getHeaders(false), // No Content-Type — browser sets it with boundary
+        headers: getHeaders(false), // No Content-Type -- browser sets it with boundary
         body: formData,
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -110,6 +130,7 @@ export const apiPatch = async (path, body = {}) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -126,6 +147,7 @@ export const apiPut = async (path, body) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -142,6 +164,7 @@ export const apiPutForm = async (path, formData) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();
@@ -157,6 +180,7 @@ export const apiDelete = async (path) => {
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        handleApiError(res, err);
         throw new Error(err.error || `HTTP ${res.status}`);
     }
     return res.json();

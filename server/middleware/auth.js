@@ -36,8 +36,21 @@ export const authenticateUser = async (req, res, next) => {
             return res.status(404).json({ error: 'User not found. Please complete registration.' });
         }
 
+        // Permanently deleted - no recovery possible
+        if (user.isDeleted) {
+            return res.status(403).json({
+                error: 'This account has been permanently removed.',
+                deleted: true,
+            });
+        }
+
         if (!user.isActive) {
-            return res.status(403).json({ error: 'Account is deactivated.' });
+            return res.status(403).json({ 
+                error: 'Account is suspended.', 
+                suspended: true,
+                suspendedAt: user.suspendedAt,
+                reason: user.suspendedReason || 'Account suspended by administrator',
+            });
         }
 
         req.user = user;

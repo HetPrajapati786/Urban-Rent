@@ -19,13 +19,39 @@ export default function ProtectedRoute({ children, role }) {
     const { isLoaded, isSignedIn } = useAuth();
     const { user } = useUser();
 
-    // Check for admin impersonation bypass BEFORE clerk auth checks
+    // Check for admin impersonation bypass BEFORE clerk auth checks.
+    // IMPORTANT: Only allow bypass when:
+    //   1. A valid admin session exists in localStorage
+    //   2. An impersonation target is set
+    //   3. The current user is NOT signed into Clerk (a real user session)
+    //      — if they are, the impersonation keys are stale and should be cleaned up
     const adminSession = localStorage.getItem('urbanrent_admin');
     const impersonating = localStorage.getItem('urbanrent_impersonate');
-    const isAdminImpersonating = !!(adminSession && impersonating);
 
-    if (isAdminImpersonating) {
-        return children;
+    if (adminSession && impersonating) {
+        // Validate admin session structure
+        let validAdmin = false;
+        try {
+            const parsed = JSON.parse(adminSession);
+            validAdmin = !!(parsed.clerkId && parsed.role === 'admin');
+        } catch { /* invalid JSON */ }
+
+        if (validAdmin) {
+            // If Clerk auth is loaded and a real user is signed in, this means
+            // a regular user logged in on a browser that has stale impersonation keys.
+            // Clean them up instead of bypassing auth.
+            if (isLoaded && isSignedIn) {
+                localStorage.removeItem('urbanrent_impersonate');
+                localStorage.removeItem('urbanrent_impersonate_data');
+            } else {
+                // No real Clerk session → this is genuinely an admin impersonation tab
+                return children;
+            }
+        } else {
+            // Invalid admin session — clean up everything
+            localStorage.removeItem('urbanrent_impersonate');
+            localStorage.removeItem('urbanrent_impersonate_data');
+        }
     }
 
     // Still loading auth state

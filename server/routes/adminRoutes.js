@@ -12,11 +12,14 @@ import {
     verifyProperty,
     unverifyProperty,
     toggleUserStatus,
+    impersonateUser,
     getAllApplications,
     updateApplicationStatus,
     getAllPayments,
     refundPayment,
     getAdminIncomeStats,
+    getReactivationRequests,
+    handleReactivationRequest,
 } from '../controllers/adminController.js';
 import { authenticateUser, requireRole } from '../middleware/auth.js';
 
@@ -39,7 +42,11 @@ router.delete('/properties/:id', deleteProperty);
 
 router.get('/users', getAllUsers);
 router.patch('/users/:id/status', toggleUserStatus);
+router.post('/users/:id/impersonate', impersonateUser);
 router.delete('/users/:id', deleteUser);
+
+router.get('/reactivation-requests', getReactivationRequests);
+router.patch('/reactivation-requests/:userId/:requestId', handleReactivationRequest);
 
 router.get('/applications', getAllApplications);
 router.patch('/applications/:id/status', updateApplicationStatus);

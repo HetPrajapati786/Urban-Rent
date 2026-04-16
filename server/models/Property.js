@@ -131,6 +131,15 @@ const propertySchema = new mongoose.Schema(
         views: { type: Number, default: 0 },
         inquiries: { type: Number, default: 0 },
         savedCount: { type: Number, default: 0 },
+
+        // ─── Suspension Notice ───
+        suspensionNotice: {
+            issuedAt: { type: Date },
+            availableToOthersAt: { type: Date }, // 7 days after issuedAt
+            vacateBy: { type: Date }, // 7 days from notice
+            noticeType: { type: String, enum: ['suspension', 'deletion'] },
+            acknowledged: { type: Boolean, default: false },
+        },
     },
     { timestamps: true }
 );

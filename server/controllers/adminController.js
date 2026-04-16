@@ -4,8 +4,10 @@ import Application from '../models/Application.js';
 import Payment from '../models/Payment.js';
 import Invoice from '../models/Invoice.js';
 import AdminIncome from '../models/AdminIncome.js';
+import Notification from '../models/Notification.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import { io } from '../server.js';
 
 /**
  * POST /api/admin/login
@@ -268,7 +270,7 @@ export const getPropertyDetail = async (req, res) => {
 
 /**
  * DELETE /api/admin/users/:id
- * Delete a user and all their properties (admin only)
+ * Delete a user with 7-day property notice (admin only)
  */
 export const deleteUser = async (req, res) => {
     try {
@@ -282,15 +284,139 @@ export const deleteUser = async (req, res) => {
             return res.status(403).json({ error: 'Cannot delete admin users' });
         }
 
-        // If manager, delete all their properties first
+        const now = new Date();
+        const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // If manager, issue 7-day notice on all their properties
         if (user.role === 'manager') {
-            await Property.deleteMany({ owner: user._id });
+            const properties = await Property.find({ owner: user._id });
+
+            for (const property of properties) {
+                property.suspensionNotice = {
+                    issuedAt: now,
+                    availableToOthersAt: sevenDaysLater,
+                    vacateBy: sevenDaysLater,
+                    noticeType: 'deletion',
+                    acknowledged: false,
+                };
+                await property.save();
+
+                // Notify tenants of these properties
+                const activeTenancies = await Application.find({
+                    property: property._id,
+                    status: 'approved',
+                }).populate('tenant');
+
+                for (const tenancy of activeTenancies) {
+                    if (tenancy.tenant) {
+                        await Notification.create({
+                            user: tenancy.tenant._id,
+                            title: 'Property Vacate Notice - 7 Days',
+                            message: `The property "${property.title}" requires vacating within 7 days due to the property owner's account being removed. Deadline: ${sevenDaysLater.toLocaleDateString('en-IN')}. Non-compliance may result in legal action.`,
+                            type: 'warning',
+                            link: `/tenant/properties/${property._id}`,
+                        });
+
+                        // Emit live notice to tenant
+                        io.to(tenancy.tenant.clerkId).emit('property-vacate-notice', {
+                            propertyId: property._id.toString(),
+                            propertyTitle: property.title,
+                            vacateBy: sevenDaysLater.toISOString(),
+                            noticeType: 'deletion',
+                        });
+                    }
+                }
+            }
         }
 
-        // Delete the user
-        await User.findByIdAndDelete(req.params.id);
+        // If tenant, notify managers of properties they are currently renting
+        if (user.role === 'tenant') {
+            const activeTenancies = await Application.find({
+                tenant: user._id,
+                status: 'approved',
+            }).populate('property');
 
-        res.json({ message: `User ${user.firstName} ${user.lastName} deleted successfully` });
+            for (const tenancy of activeTenancies) {
+                if (tenancy.property) {
+                    await Notification.create({
+                        user: tenancy.property.owner,
+                        title: 'Tenant Account Removed',
+                        message: `Tenant ${user.firstName} ${user.lastName} account has been removed by admin. The property "${tenancy.property.title}" will need a new tenant.`,
+                        type: 'warning',
+                    });
+                }
+            }
+        }
+
+        // Emit force-logout event to immediately sign out the user
+        io.to(user.clerkId).emit('force-logout', {
+            type: 'deletion',
+            reason: 'Your account has been permanently removed by the administrator.',
+        });
+
+        // Also emit account-deleted for the modal display
+        io.to(user.clerkId).emit('account-deleted', {
+            reason: 'Your account has been permanently removed by the administrator.',
+        });
+
+        // Mark user as permanently deleted - blocks all future logins
+        user.isActive = false;
+        user.isDeleted = true;
+        user.deletedAt = now;
+        user.suspendedAt = now;
+        user.suspendedReason = 'Account permanently deleted by administrator';
+        await user.save();
+
+        res.json({ message: `User ${user.firstName} ${user.lastName} deleted successfully. All login access has been revoked. 7-day property notices have been issued.` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * POST /api/admin/users/:id/impersonate
+ * Notify a user that admin is about to impersonate their account.
+ * Forces the user's current session to end.
+ */
+export const impersonateUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (user.role === 'admin') {
+            return res.status(403).json({ error: 'Cannot impersonate admin users' });
+        }
+
+        const adminUser = req.user;
+        const adminName = `${adminUser.firstName} ${adminUser.lastName}`.trim() || 'Administrator';
+
+        // Emit force-logout to the user being impersonated
+        io.to(user.clerkId).emit('force-logout', {
+            type: 'impersonation',
+            reason: `The platform administrator (${adminName}) has initiated a secure session review of your account. Your current session has been temporarily ended for security purposes.`,
+            adminName,
+        });
+
+        // Create a notification for the user
+        await Notification.create({
+            user: user._id,
+            title: 'Admin Session Review',
+            message: `An administrator has reviewed your account via a secure impersonation session. This is a standard platform audit procedure. If you have concerns, please contact support.`,
+            type: 'info',
+        });
+
+        res.json({
+            message: `User ${user.firstName} ${user.lastName} has been notified and their session has been ended.`,
+            user: {
+                clerkId: user.clerkId,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                avatar: user.avatar,
+                role: user.role,
+            },
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -368,7 +494,8 @@ export const unverifyProperty = async (req, res) => {
 
 /**
  * PATCH /api/admin/users/:id/status
- * Toggle a user's active status (Suspend / Unsuspend)
+ * Toggle a user's active status (Suspend / Activate)
+ * Body: { reason } - required when suspending
  */
 export const toggleUserStatus = async (req, res) => {
     try {
@@ -381,10 +508,239 @@ export const toggleUserStatus = async (req, res) => {
             return res.status(403).json({ error: 'Cannot suspend an admin user' });
         }
 
+        const wasSuspending = user.isActive; // true means we are about to suspend
         user.isActive = !user.isActive;
-        await user.save();
+
+        if (wasSuspending) {
+            // Suspending the user
+            const { reason } = req.body;
+            const now = new Date();
+            const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+            user.suspendedAt = now;
+            user.suspendedReason = reason || 'Account suspended by administrator';
+            await user.save();
+
+            // Create notification for the suspended user
+            await Notification.create({
+                user: user._id,
+                title: 'Account Suspended',
+                message: `Your account has been suspended. Reason: ${user.suspendedReason}. You may submit a reactivation request through the Help & Support section.`,
+                type: 'error',
+            });
+
+            // Emit live suspension event via Socket.IO
+            io.to(user.clerkId).emit('user-suspended', {
+                reason: user.suspendedReason,
+                suspendedAt: now.toISOString(),
+            });
+
+            // Issue 7-day property notices
+            if (user.role === 'manager') {
+                const properties = await Property.find({ owner: user._id, status: { $in: ['active', 'rented', 'awaiting_payment'] } });
+
+                for (const property of properties) {
+                    property.suspensionNotice = {
+                        issuedAt: now,
+                        availableToOthersAt: sevenDaysLater,
+                        vacateBy: sevenDaysLater,
+                        noticeType: 'suspension',
+                        acknowledged: false,
+                    };
+                    // Pause the property
+                    if (property.status === 'active') {
+                        property.status = 'paused';
+                    }
+                    await property.save();
+
+                    // Notify active tenants about the vacate notice
+                    const activeTenancies = await Application.find({
+                        property: property._id,
+                        status: 'approved',
+                    }).populate('tenant');
+
+                    for (const tenancy of activeTenancies) {
+                        if (tenancy.tenant) {
+                            await Notification.create({
+                                user: tenancy.tenant._id,
+                                title: 'Property Vacate Notice - 7 Days',
+                                message: `The property "${property.title}" requires vacating within 7 days due to the property owner's account suspension. Deadline: ${sevenDaysLater.toLocaleDateString('en-IN')}. Non-compliance may result in legal action.`,
+                                type: 'warning',
+                                link: `/tenant/properties/${property._id}`,
+                            });
+
+                            // Emit live vacate notice to tenant
+                            io.to(tenancy.tenant.clerkId).emit('property-vacate-notice', {
+                                propertyId: property._id.toString(),
+                                propertyTitle: property.title,
+                                vacateBy: sevenDaysLater.toISOString(),
+                                noticeType: 'suspension',
+                            });
+                        }
+                    }
+                }
+            }
+
+            // If tenant is suspended, notify their landlords
+            if (user.role === 'tenant') {
+                const activeTenancies = await Application.find({
+                    tenant: user._id,
+                    status: 'approved',
+                }).populate('property');
+
+                for (const tenancy of activeTenancies) {
+                    if (tenancy.property) {
+                        await Notification.create({
+                            user: tenancy.property.owner,
+                            title: 'Tenant Suspended',
+                            message: `Tenant ${user.firstName} ${user.lastName} has been suspended by the admin. Their tenancy at "${tenancy.property.title}" is subject to a 7-day vacate notice.`,
+                            type: 'warning',
+                        });
+                    }
+                }
+            }
+
+        } else {
+            // Reactivating the user
+            user.suspendedAt = undefined;
+            user.suspendedReason = '';
+            await user.save();
+
+            // Re-activate paused properties that had suspension notices
+            if (user.role === 'manager') {
+                await Property.updateMany(
+                    { owner: user._id, 'suspensionNotice.noticeType': 'suspension' },
+                    { $unset: { suspensionNotice: 1 }, $set: { status: 'active' } }
+                );
+            }
+
+            // Create notification for the reactivated user
+            await Notification.create({
+                user: user._id,
+                title: 'Account Reactivated',
+                message: 'Your account has been reactivated by the administrator. You now have full access to the platform.',
+                type: 'success',
+            });
+
+            // Emit live reactivation event
+            io.to(user.clerkId).emit('user-reactivated', {});
+        }
 
         res.json({ message: `User ${user.isActive ? 'activated' : 'suspended'} successfully`, user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * GET /api/admin/reactivation-requests
+ * Get all pending reactivation requests from suspended users
+ */
+export const getReactivationRequests = async (req, res) => {
+    try {
+        const { status = 'pending' } = req.query;
+
+        const users = await User.find({
+            'reactivationRequests': {
+                $elemMatch: { status: status === 'all' ? { $exists: true } : status }
+            }
+        }).select('firstName lastName email avatar role suspendedAt suspendedReason reactivationRequests isActive').lean();
+
+        // Flatten into request list with user info
+        const requests = [];
+        for (const user of users) {
+            for (const rReq of user.reactivationRequests) {
+                if (status === 'all' || rReq.status === status) {
+                    requests.push({
+                        _id: rReq._id,
+                        userId: user._id,
+                        userName: `${user.firstName} ${user.lastName}`,
+                        userEmail: user.email,
+                        userAvatar: user.avatar,
+                        userRole: user.role,
+                        userIsActive: user.isActive,
+                        suspendedAt: user.suspendedAt,
+                        suspendedReason: user.suspendedReason,
+                        message: rReq.message,
+                        status: rReq.status,
+                        adminResponse: rReq.adminResponse,
+                        requestedAt: rReq.requestedAt,
+                        respondedAt: rReq.respondedAt,
+                    });
+                }
+            }
+        }
+
+        // Sort by requestedAt descending
+        requests.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+
+        res.json({ requests });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * PATCH /api/admin/reactivation-requests/:userId/:requestId
+ * Approve or reject a reactivation request
+ * Body: { action: 'approve' | 'reject', response: string }
+ */
+export const handleReactivationRequest = async (req, res) => {
+    try {
+        const { userId, requestId } = req.params;
+        const { action, response } = req.body;
+
+        if (!['approve', 'reject'].includes(action)) {
+            return res.status(400).json({ error: 'Invalid action. Must be approve or reject.' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const request = user.reactivationRequests.id(requestId);
+        if (!request) {
+            return res.status(404).json({ error: 'Reactivation request not found' });
+        }
+
+        request.status = action === 'approve' ? 'approved' : 'rejected';
+        request.adminResponse = response || '';
+        request.respondedAt = new Date();
+
+        if (action === 'approve') {
+            user.isActive = true;
+            user.suspendedAt = undefined;
+            user.suspendedReason = '';
+
+            // Re-activate suspended properties
+            if (user.role === 'manager') {
+                await Property.updateMany(
+                    { owner: user._id, 'suspensionNotice.noticeType': 'suspension' },
+                    { $unset: { suspensionNotice: 1 }, $set: { status: 'active' } }
+                );
+            }
+
+            // Emit live reactivation event
+            io.to(user.clerkId).emit('user-reactivated', {});
+        }
+
+        await user.save();
+
+        // Notify the user
+        await Notification.create({
+            user: user._id,
+            title: action === 'approve' ? 'Account Reactivated' : 'Reactivation Request Denied',
+            message: action === 'approve'
+                ? 'Your account reactivation request has been approved. You now have full access to the platform.'
+                : `Your account reactivation request has been denied.${response ? ` Reason: ${response}` : ''} You may submit another request if you believe this was in error.`,
+            type: action === 'approve' ? 'success' : 'error',
+        });
+
+        res.json({
+            message: `Reactivation request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+            user,
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
