@@ -5,11 +5,52 @@ import { apiPost } from '../utils/api';
 /**
  * UserSync component — Silent background synchronizer to ensure 
  * Clerk user data always exists in MongoDB.
+ * Also handles cross-tab/cross-account session invalidation.
  */
 export default function UserSync() {
     const { user, isLoaded, isSignedIn } = useUser();
     const syncInProgress = useRef(false);
 
+    // ── Cross-account multi-tab detection ──────────────────────────────────
+    // If a different Clerk user signs in (in any tab), invalidate cached data
+    useEffect(() => {
+        if (!isLoaded) return;
+
+        const STORED_KEY = 'urbanrent_active_user';
+        // Keys we want to keep across account switches (UI preferences only)
+        const PRESERVE_KEYS = ['urbanrent_tenant_sidebar', 'urbanrent_manager_sidebar'];
+
+        if (isSignedIn && user) {
+            const storedUserId = localStorage.getItem(STORED_KEY);
+            const currentUserId = user.id;
+
+            if (storedUserId && storedUserId !== currentUserId) {
+                // A DIFFERENT user is now signed in — purge all stale session data
+                const allKeys = Object.keys(localStorage);
+                allKeys.forEach(key => {
+                    if (!PRESERVE_KEYS.includes(key)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                // Set the new user ID before reload
+                localStorage.setItem(STORED_KEY, currentUserId);
+                // Force full reload so React state is fresh
+                window.location.reload();
+                return;
+            }
+
+            // First login or same user — store ID
+            localStorage.setItem(STORED_KEY, currentUserId);
+        } else if (!isSignedIn && isLoaded) {
+            // Signed out — clear the tracked user ID so next login is clean
+            localStorage.removeItem(STORED_KEY);
+            // Also clear any impersonation leftovers
+            localStorage.removeItem('urbanrent_impersonate');
+            localStorage.removeItem('urbanrent_impersonate_data');
+        }
+    }, [isLoaded, isSignedIn, user]);
+
+    // ── MongoDB sync ────────────────────────────────────────────────────────
     useEffect(() => {
         const syncUser = async () => {
             if (!isLoaded || !isSignedIn || !user || syncInProgress.current) return;
@@ -27,8 +68,6 @@ export default function UserSync() {
                     avatar: user.imageUrl,
                     role,
                 });
-                // Once synced successfully, we don't need to do it again for this session
-                // unless the user object changes significantly.
             } catch (error) {
                 console.error('Background user sync failed:', error);
             } finally {
@@ -39,5 +78,5 @@ export default function UserSync() {
         syncUser();
     }, [isLoaded, isSignedIn, user]);
 
-    return null; // This component doesn't render anything
+    return null;
 }

@@ -25,6 +25,10 @@ export default function TenantPropertyCard({ property, isFavourite = false, onTo
     const rent = property.pricing?.monthlyRent || 0;
     const deposit = property.pricing?.securityDeposit || 0;
     const type = property.propertyType || 'Residential';
+    const category = property.category || (
+        ['Shop', 'Office', 'Factory', 'Warehouse'].includes(property.propertyType)
+            ? 'Commercial' : 'Residential'
+    );
 
     const detailPath = isDemo
         ? `/demo/tenant/properties/${property._id}`
@@ -40,7 +44,7 @@ export default function TenantPropertyCard({ property, isFavourite = false, onTo
     };
 
     return (
-        <div className={`bg-white rounded-2xl border overflow-hidden group hover:shadow-xl transition-all duration-300 relative ${property.status === 'awaiting_payment' ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.15)]' : property.status === 'rented' ? 'border-dark-300' : 'border-dark-100 hover:-translate-y-0.5'}`}>
+        <div className={`bg-white rounded-2xl border overflow-hidden group hover:shadow-xl transition-all duration-300 relative flex flex-col h-full ${property.status === 'awaiting_payment' ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.15)]' : property.status === 'rented' ? 'border-dark-300' : 'border-dark-100 hover:-translate-y-0.5'}`}>
             {/* ── Image Area ── */}
             <div className="relative overflow-hidden">
                 <Link to={detailPath} className="block relative h-48 w-full overflow-hidden bg-dark-50">
@@ -76,6 +80,11 @@ export default function TenantPropertyCard({ property, isFavourite = false, onTo
                     <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/90 backdrop-blur-sm text-dark-700 border border-dark-100 shadow-sm capitalize w-fit">
                         {type}
                     </span>
+                    {category === 'PG/Hostel' && (
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-violet-500/90 backdrop-blur-sm text-white shadow-sm w-fit">
+                            PG/Hostel
+                        </span>
+                    )}
                     {property.status === 'awaiting_payment' && (
                         <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/90 backdrop-blur-sm text-white shadow-sm w-fit uppercase tracking-wider">
                             Awaiting Payment
@@ -139,7 +148,7 @@ export default function TenantPropertyCard({ property, isFavourite = false, onTo
             </div>
 
             {/* ── Card Body ── */}
-            <div className="p-4">
+            <div className="p-4 flex flex-col flex-1">
                 {/* Location */}
                 <div className="flex items-center gap-1 text-dark-400 text-[11px] mb-1.5">
                     <svg className="w-3 h-3 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -182,7 +191,7 @@ export default function TenantPropertyCard({ property, isFavourite = false, onTo
                 {/* Reduced Card Heights (No Extra Banners required anymore) */}
 
                 {/* Price + CTA */}
-                <div className={`flex items-end justify-between pt-3 ${['awaiting_payment', 'rented'].includes(property.status) ? 'opacity-60' : ''}`}>
+                <div className={`flex items-end justify-between pt-3 mt-auto ${['awaiting_payment', 'rented'].includes(property.status) ? 'opacity-60' : ''}`}>
                     <div>
                         <p className="text-[10px] text-dark-400 font-semibold uppercase tracking-wider">Monthly Rent</p>
                         <p className="text-lg font-black text-dark-900 leading-none">

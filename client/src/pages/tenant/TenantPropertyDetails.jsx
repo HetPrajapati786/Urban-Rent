@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { SignInButton } from '@clerk/clerk-react';
 import TenantLayout from '../../layouts/TenantLayout';
 import PropertyMediaGallery from '../../components/PropertyMediaGallery';
 import TenantPropertyCard from '../../components/tenant/TenantPropertyCard';
@@ -44,6 +45,8 @@ export default function TenantPropertyDetails() {
     const { id } = useParams();
     const location = useLocation();
     const isDemo = location.pathname.startsWith('/demo');
+    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const isRestrictedDemo = isDemo && !isImpersonating;
 
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -135,6 +138,7 @@ export default function TenantPropertyDetails() {
     };
 
     const toggleFavourite = () => {
+        if (isRestrictedDemo) return; // Wait, actually let's wrap the favourite button in SignInButton instead if it's restricted, or keep local. Let's keep favourite working locally since it doesn't do API calls. Wait, the user said "other features as well should not work". Let's restrict it if needed, or deal with CTA buttons first.
         const favs = JSON.parse(localStorage.getItem('urbanrent_favourites') || '[]');
         let updated;
         if (favs.includes(id)) {
@@ -255,14 +259,24 @@ export default function TenantPropertyDetails() {
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={toggleFavourite}
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all active:scale-90 ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-white border-dark-200 text-dark-400 hover:border-rose-300 hover:text-rose-400'}`}
-                        >
-                            <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                            </svg>
-                        </button>
+                        {isRestrictedDemo ? (
+                            <SignInButton mode="modal">
+                                <button className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all active:scale-90 ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-white border-dark-200 text-dark-400 hover:border-rose-300 hover:text-rose-400'}`}>
+                                    <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                    </svg>
+                                </button>
+                            </SignInButton>
+                        ) : (
+                            <button
+                                onClick={toggleFavourite}
+                                className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all active:scale-90 ${isFav ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-white border-dark-200 text-dark-400 hover:border-rose-300 hover:text-rose-400'}`}
+                            >
+                                <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                            </button>
+                        )}
                         <button
                             onClick={() => {
                                 const text = `Check out this property: ${property.title} - ${loc?.area}, ${loc?.city}`;
@@ -457,13 +471,22 @@ export default function TenantPropertyDetails() {
                                                 Apply now to secure your spot when it becomes available.
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => setShowApplyModal(true)}
-                                            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            Advance Apply
-                                        </button>
+                                        {isRestrictedDemo ? (
+                                            <SignInButton mode="modal">
+                                                <button className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    Advance Apply
+                                                </button>
+                                            </SignInButton>
+                                        ) : (
+                                            <button
+                                                onClick={() => setShowApplyModal(true)}
+                                                className="w-full py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                Advance Apply
+                                            </button>
+                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -475,38 +498,71 @@ export default function TenantPropertyDetails() {
                                                 </div>
                                             </div>
                                         )}
-                                        <button
-                                            onClick={() => setShowApplyModal(true)}
-                                            className={`w-full py-2.5 text-white rounded-xl font-semibold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm ${property.status === 'awaiting_payment' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/15' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/15'}`}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                            {property.status === 'awaiting_payment' ? 'Apply (Join Waitlist)' : 'Apply for Rent'}
-                                        </button>
+                                        {isRestrictedDemo ? (
+                                            <SignInButton mode="modal">
+                                                <button className={`w-full py-2.5 text-white rounded-xl font-semibold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm ${property.status === 'awaiting_payment' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/15' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/15'}`}>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    {property.status === 'awaiting_payment' ? 'Apply (Join Waitlist)' : 'Apply for Rent'}
+                                                </button>
+                                            </SignInButton>
+                                        ) : (
+                                            <button
+                                                onClick={() => setShowApplyModal(true)}
+                                                className={`w-full py-2.5 text-white rounded-xl font-semibold transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-2 text-sm ${property.status === 'awaiting_payment' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/15' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/15'}`}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                {property.status === 'awaiting_payment' ? 'Apply (Join Waitlist)' : 'Apply for Rent'}
+                                            </button>
+                                        )}
                                     </>
                                 )}
-                                <button
-                                    onClick={() => setShowContactModal(true)}
-                                    className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    Contact Manager
-                                </button>
-                                <button
-                                    onClick={toggleFavourite}
-                                    className={`w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm border ${isFav
-                                        ? 'bg-rose-50 border-rose-200 text-rose-600'
-                                        : 'bg-white border-dark-200 text-dark-600 hover:border-rose-300 hover:text-rose-500'
-                                        }`}
-                                >
-                                    <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                    </svg>
-                                    {isFav ? 'Saved to Favourites' : 'Save to Favourites'}
-                                </button>
+                                {isRestrictedDemo ? (
+                                    <SignInButton mode="modal">
+                                        <button className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                            </svg>
+                                            Contact Manager
+                                        </button>
+                                    </SignInButton>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowContactModal(true)}
+                                        className="w-full py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/15 active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        Contact Manager
+                                    </button>
+                                )}
+                                {isRestrictedDemo ? (
+                                    <SignInButton mode="modal">
+                                        <button className={`w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm border ${isFav ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-dark-200 text-dark-600 hover:border-rose-300 hover:text-rose-500'}`}>
+                                            <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            </svg>
+                                            {isFav ? 'Saved to Favourites' : 'Save to Favourites'}
+                                        </button>
+                                    </SignInButton>
+                                ) : (
+                                    <button
+                                        onClick={toggleFavourite}
+                                        className={`w-full py-2.5 rounded-xl font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm border ${isFav
+                                            ? 'bg-rose-50 border-rose-200 text-rose-600'
+                                            : 'bg-white border-dark-200 text-dark-600 hover:border-rose-300 hover:text-rose-500'
+                                            }`}
+                                    >
+                                        <svg className="w-4 h-4" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        {isFav ? 'Saved to Favourites' : 'Save to Favourites'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -525,12 +581,20 @@ export default function TenantPropertyDetails() {
                                     <span className="ml-auto bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-bold">Verified</span>
                                 )}
                             </div>
-                            <button
-                                onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: property.owner }))}
-                                className="w-full py-2.5 border-2 border-primary-200 text-primary-600 rounded-xl font-semibold text-sm hover:bg-primary-50 transition-colors"
-                            >
-                                Send Message
-                            </button>
+                            {isRestrictedDemo ? (
+                                <SignInButton mode="modal">
+                                    <button className="w-full py-2.5 border-2 border-primary-200 text-primary-600 rounded-xl font-semibold text-sm hover:bg-primary-50 transition-colors">
+                                        Send Message
+                                    </button>
+                                </SignInButton>
+                            ) : (
+                                <button
+                                    onClick={() => window.dispatchEvent(new CustomEvent('open-chat', { detail: property.owner }))}
+                                    className="w-full py-2.5 border-2 border-primary-200 text-primary-600 rounded-xl font-semibold text-sm hover:bg-primary-50 transition-colors"
+                                >
+                                    Send Message
+                                </button>
+                            )}
                         </div>
 
                         {/* Additional Preferences */}

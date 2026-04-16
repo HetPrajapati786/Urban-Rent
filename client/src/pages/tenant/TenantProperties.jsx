@@ -71,7 +71,12 @@ export default function TenantProperties() {
             const locStr = `${p.location?.area || ''} ${p.location?.city || ''}`;
             const matchSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 locStr.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchType = activeType === 'All' || p.type?.toLowerCase() === activeType.toLowerCase();
+            // Derive category for older properties that don't have the field
+            const propCategory = p.category || (
+                ['Shop', 'Office', 'Factory', 'Warehouse'].includes(p.propertyType)
+                    ? 'Commercial' : 'Residential'
+            );
+            const matchType = activeType === 'All' || propCategory === activeType;
             return matchSearch && matchType;
         })
         .sort((a, b) => {

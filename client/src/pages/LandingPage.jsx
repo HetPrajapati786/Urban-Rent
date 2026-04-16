@@ -7,6 +7,7 @@ import Features from '../components/Features';
 import Stats from '../components/Stats';
 import DiscoverValue from '../components/DiscoverValue';
 import Properties from '../components/Properties';
+import LandingBlogs from '../components/LandingBlogs';
 import FAQ from '../components/FAQ';
 import Testimonials from '../components/Testimonials';
 import CTA from '../components/CTA';
@@ -24,6 +25,7 @@ export default function LandingPage() {
             <Stats />
             <DiscoverValue />
             <Properties />
+            <LandingBlogs />
             <FAQ />
             <Testimonials />
             <CTA />

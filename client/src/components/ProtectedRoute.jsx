@@ -1,4 +1,4 @@
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth, useUser, RedirectToSignIn } from '@clerk/clerk-react';
 import { Navigate } from 'react-router-dom';
 
 /**
@@ -66,9 +66,9 @@ export default function ProtectedRoute({ children, role }) {
         );
     }
 
-    // Not signed in → redirect to sign-in
+    // Not signed in → redirect to sign-in securely using Clerk
     if (!isSignedIn) {
-        return <Navigate to="/sign-in" replace />;
+        return <RedirectToSignIn />;
     }
 
     // Check role from both unsafeMetadata (client-set) and publicMetadata (server-set)

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ChatWidget from '../components/ChatWidget';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { UserButton, SignedIn, SignedOut, SignInButton, useUser } from '@clerk/clerk-react';
+import { UserButton, SignedIn, SignedOut, SignInButton, useUser, useAuth } from '@clerk/clerk-react';
 import NotificationDropdown from '../components/common/NotificationDropdown';
 import Sidebar from '../components/common/Sidebar';
 import { 
@@ -13,13 +13,15 @@ import {
     List,
     CreditCard,
     Newspaper,
-    UserCircle2
+    UserCircle2,
+    LogIn
 } from 'lucide-react';
 
 export default function TenantLayout({ children, breadcrumbs, searchValue, onSearchChange, searchPlaceholder, isPublicPage, hideSearch }) {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useUser();
+    const { isSignedIn } = useAuth();
     const [localQuery, setLocalQuery] = useState('');
     
     const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -32,8 +34,27 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
         localStorage.setItem('urbanrent_tenant_sidebar', state);
     };
 
-    const isDemo = location.pathname.startsWith('/demo');
     const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    // isDemo is only true if the URL is /demo/* AND the user is NOT a real signed-in user
+    // Real authenticated users on demo paths get redirected to their real routes below
+    const isOnDemoPath = location.pathname.startsWith('/demo');
+    const isDemo = isOnDemoPath && !isSignedIn && !isImpersonating;
+
+    // Redirect real signed-in users away from /demo/* → their real authenticated paths
+    useEffect(() => {
+        if (isSignedIn && user && isOnDemoPath && !isImpersonating) {
+            const role = user.unsafeMetadata?.role || user.publicMetadata?.role;
+            // Strip /demo prefix and redirect
+            const realPath = location.pathname.replace('/demo/tenant', '') || '/';
+            if (role === 'tenant') {
+                navigate(`/tenant${realPath || '/home'}`, { replace: true });
+            } else if (role === 'manager') {
+                navigate('/manager/dashboard', { replace: true });
+            } else {
+                navigate('/', { replace: true });
+            }
+        }
+    }, [isSignedIn, user, isOnDemoPath, isImpersonating, location.pathname, navigate]);
     const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
     const resolvePath = (path) => isDemo ? `/demo${path}` : path;
 
@@ -88,6 +109,7 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
                 brandIcon={<UserCircle2 className="w-6 h-6 text-white" />}
                 badge="Tenant"
                 isDemo={isDemo}
+                isImpersonating={isImpersonating}
                 brandLink={isDemo ? '/demo/tenant/dashboard' : '/tenant/dashboard'}
                 bottomContent={(expanded) => (
                     <>
@@ -143,7 +165,7 @@ export default function TenantLayout({ children, breadcrumbs, searchValue, onSea
                             ) : (
                                 <SignInButton mode="modal">
                                     <button className="w-10 h-10 flex items-center justify-center rounded-xl bg-dark-900 text-white hover:bg-dark-800 transition-colors shadow-sm mx-auto">
-                                        <Search className="w-4 h-4" />
+                                        <LogIn className="w-4 h-4" />
                                     </button>
                                 </SignInButton>
                             )}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { SignInButton } from '@clerk/clerk-react';
 import logoUrl from '../../assets/UrbanRent HD.png';
 
-export default function Sidebar({ items, brandIcon, brandName, bottomContent, badge, isDemo, expanded, onToggle, brandLink }) {
+export default function Sidebar({ items, brandIcon, brandName, bottomContent, badge, isDemo, isImpersonating, expanded, onToggle, brandLink }) {
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -31,29 +32,52 @@ export default function Sidebar({ items, brandIcon, brandName, bottomContent, ba
         return currentPath.startsWith(targetPath);
     };
 
+    const isRestrictedDemo = isDemo && !isImpersonating;
+
     return (
         <aside 
             className={`fixed top-4 left-4 bottom-4 bg-[#0a0a0a] rounded-xl shadow-xl flex flex-col z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${expanded ? 'w-64' : 'w-20'}`}
         >
             {/* Header: Brand & Toggle */}
             <div className="h-20 flex items-center px-4 pt-4 pb-2 mb-2 relative">
-                <Link to={brandLink || '/'} className="flex items-center gap-3 min-w-0">
-                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center transition-all duration-300 relative group">
-                        <img src={logoUrl} alt="Logo" className="w-auto h-9 object-contain" />
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0a] shadow-sm" />
-                    </div>
-                    {/* Animate opacity safely without breaking flex child width immediately */}
-                    <div className={`whitespace-nowrap flex flex-col justify-center transition-all duration-300 ${expanded ? 'opacity-100 translate-x-0 w-32' : 'opacity-0 -translate-x-2 w-0 overflow-hidden'}`}>
-                        <span className="text-xl font-bold text-white tracking-tight leading-none mb-1">
-                            {brandName}
-                        </span>
-                        {badge && (
-                            <span className="text-[10px] font-bold text-dark-300 uppercase tracking-widest leading-none">
-                                {badge} {isDemo && <span className="text-amber-500 ml-1">DEMO</span>}
+                {isRestrictedDemo ? (
+                    <SignInButton mode="modal">
+                        <button className="flex items-center gap-3 min-w-0 text-left">
+                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center transition-all duration-300 relative group">
+                                <img src={logoUrl} alt="Logo" className="w-auto h-9 object-contain" />
+                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0a] shadow-sm" />
+                            </div>
+                            <div className={`whitespace-nowrap flex flex-col justify-center transition-all duration-300 ${expanded ? 'opacity-100 translate-x-0 w-32' : 'opacity-0 -translate-x-2 w-0 overflow-hidden'}`}>
+                                <span className="text-xl font-bold text-white tracking-tight leading-none mb-1">
+                                    {brandName}
+                                </span>
+                                {badge && (
+                                    <span className="text-[10px] font-bold text-dark-300 uppercase tracking-widest leading-none">
+                                        {badge} {isDemo && <span className="text-amber-500 ml-1">DEMO</span>}
+                                    </span>
+                                )}
+                            </div>
+                        </button>
+                    </SignInButton>
+                ) : (
+                    <Link to={brandLink || '/'} className="flex items-center gap-3 min-w-0">
+                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center transition-all duration-300 relative group">
+                            <img src={logoUrl} alt="Logo" className="w-auto h-9 object-contain" />
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0a] shadow-sm" />
+                        </div>
+                        {/* Animate opacity safely without breaking flex child width immediately */}
+                        <div className={`whitespace-nowrap flex flex-col justify-center transition-all duration-300 ${expanded ? 'opacity-100 translate-x-0 w-32' : 'opacity-0 -translate-x-2 w-0 overflow-hidden'}`}>
+                            <span className="text-xl font-bold text-white tracking-tight leading-none mb-1">
+                                {brandName}
                             </span>
-                        )}
-                    </div>
-                </Link>
+                            {badge && (
+                                <span className="text-[10px] font-bold text-dark-300 uppercase tracking-widest leading-none">
+                                    {badge} {isDemo && <span className="text-amber-500 ml-1">DEMO</span>}
+                                </span>
+                            )}
+                        </div>
+                    </Link>
+                )}
 
                 <button 
                     onClick={() => onToggle(!expanded)}
@@ -100,15 +124,9 @@ export default function Sidebar({ items, brandIcon, brandName, bottomContent, ba
                     }
 
                     const active = isActive(item);
-                    return (
-                        <Link
-                            key={item.label}
-                            to={item.path}
-                            className={`group relative flex items-center h-10 mx-1 rounded-md transition-all duration-200 
-                                ${active 
-                                    ? 'bg-white/10 text-white font-semibold' 
-                                    : 'text-dark-400 hover:bg-white/5 hover:text-white font-medium'
-                                }`}>
+                    
+                    const itemContent = (
+                        <>
                             <div className={`w-12 h-10 flex-shrink-0 flex items-center justify-center ${active ? 'text-white' : 'text-dark-400 group-hover:text-white'}`}>
                                 {item.icon}
                             </div>
@@ -128,6 +146,35 @@ export default function Sidebar({ items, brandIcon, brandName, bottomContent, ba
                                     {item.label}
                                 </div>
                             )}
+                        </>
+                    );
+
+                    if (isRestrictedDemo) {
+                        return (
+                            <SignInButton mode="modal" key={item.label}>
+                                <button
+                                    className={`group relative flex w-full items-center h-10 mx-1 rounded-md transition-all duration-200 
+                                        ${active 
+                                            ? 'bg-white/10 text-white font-semibold' 
+                                            : 'text-dark-400 hover:bg-white/5 hover:text-white font-medium'
+                                        }`}
+                                >
+                                    {itemContent}
+                                </button>
+                            </SignInButton>
+                        );
+                    }
+
+                    return (
+                        <Link
+                            key={item.label}
+                            to={item.path}
+                            className={`group relative flex items-center h-10 mx-1 rounded-md transition-all duration-200 
+                                ${active 
+                                    ? 'bg-white/10 text-white font-semibold' 
+                                    : 'text-dark-400 hover:bg-white/5 hover:text-white font-medium'
+                                }`}>
+                            {itemContent}
                         </Link>
                     );
                 })}

@@ -325,7 +325,7 @@ export default function ManagerDashboard() {
                             >
                                 <div className="flex flex-col sm:flex-row">
                                     {/* Image */}
-                                    <div className="sm:w-56 md:w-64 h-[200px] sm:h-auto relative flex-shrink-0 overflow-hidden bg-dark-50 border-r border-dark-100">
+                                    <div className="sm:w-56 md:w-64 h-[170px] sm:h-[170px] relative flex-shrink-0 overflow-hidden bg-dark-50 border-r border-dark-100">
                                         <img
                                             src={property.images?.[0]?.url || 'https://via.placeholder.com/400x300?text=No+Image'}
                                             alt={property.title}
@@ -346,7 +346,7 @@ export default function ManagerDashboard() {
                                     </div>
 
                                     {/* Content */}
-                                    <div className="flex-1 p-4 sm:p-5 flex flex-col min-w-0">
+                                    <div className="flex-1 p-4 sm:p-5 flex flex-col min-w-0 overflow-hidden">
                                         <div>
                                             <div className="flex items-start justify-between gap-3 mb-2">
                                                 <div className="min-w-0">
@@ -394,80 +394,32 @@ export default function ManagerDashboard() {
 
                                         {/* Approved Tenants */}
                                         {(property.approvedTenants?.length > 0 || property.pendingApplications > 0) && (
-                                            <div className="mt-4 pt-3 border-t border-dark-50">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        {property.approvedTenants?.length > 0 && (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex -space-x-2">
-                                                                    {property.approvedTenants.slice(0, 3).map((app, i) => (
-                                                                        <div key={i} className="w-7 h-7 rounded-full bg-primary-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary-700">
+                                            <div className="mt-4 pt-3 border-t border-dark-50 flex items-center justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    {property.approvedTenants?.length > 0 ? (
+                                                        <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-1">
+                                                            <span className="text-[11px] font-bold text-dark-500 whitespace-nowrap">Tenants:</span>
+                                                            <div className="flex flex-nowrap items-center gap-2">
+                                                                {property.approvedTenants.map((app, i) => (
+                                                                    <div key={i} className="flex items-center gap-1.5 bg-dark-25 border border-dark-50/50 rounded-full pr-3 p-1 whitespace-nowrap flex-shrink-0">
+                                                                        <div className="w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center text-[9px] font-bold text-primary-700">
                                                                             {app.tenant?.firstName?.[0] || '?'}
                                                                         </div>
-                                                                    ))}
-                                                                    {property.approvedTenants.length > 3 && (
-                                                                        <div className="w-7 h-7 rounded-full bg-dark-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-dark-500">
-                                                                            +{property.approvedTenants.length - 3}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <span className="text-xs text-dark-500 font-medium">
-                                                                    {property.approvedTenants.length} tenant{property.approvedTenants.length !== 1 ? 's' : ''}
-                                                                </span>
+                                                                        <span className="text-[11px] font-bold text-dark-800">
+                                                                            {app.tenant?.firstName}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                    {property.pendingApplications > 0 && (
-                                                        <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                                                            {property.pendingApplications} pending
-                                                        </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] font-bold text-dark-400">No active tenants</span>
                                                     )}
                                                 </div>
-
-                                                {/* Tenant details */}
-                                                {property.approvedTenants?.length > 0 && (
-                                                    <div className="mt-2 space-y-1.5">
-                                                        {property.approvedTenants.slice(0, 2).map((app, i) => {
-                                                            const moveIn = app.moveInDate ? new Date(app.moveInDate) : null;
-                                                            const endDate = moveIn && app.leaseDuration
-                                                                ? new Date(moveIn.setMonth(moveIn.getMonth() + app.leaseDuration))
-                                                                : null;
-
-                                                            return (
-                                                                <div key={i} className="bg-dark-25 rounded-xl px-3 py-3 border border-dark-50/50">
-                                                                    <div className="flex items-center justify-between mb-1.5">
-                                                                        <span className="text-xs font-bold text-dark-800">
-                                                                            {app.tenant?.firstName} {app.tenant?.lastName}
-                                                                        </span>
-                                                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                                                                            Rent Due: 5th
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-4 text-[10px] text-dark-400 font-medium">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                            </svg>
-                                                                            <span>Moved in: {formatDate(app.moveInDate)}</span>
-                                                                        </div>
-                                                                        {endDate && (
-                                                                            <div className="flex items-center gap-1 text-amber-600">
-                                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                                </svg>
-                                                                                <span>Stay ends: {formatDate(endDate)}</span>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {property.approvedTenants.length > 2 && (
-                                                            <button className="w-full py-1.5 text-[10px] font-bold text-primary-600 hover:text-primary-700 transition-colors">
-                                                                View all {property.approvedTenants.length} tenants
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                {property.pendingApplications > 0 && (
+                                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg shrink-0 whitespace-nowrap">
+                                                        {property.pendingApplications} pending
+                                                    </span>
                                                 )}
                                             </div>
                                         )}

@@ -81,10 +81,17 @@ export const createProperty = async (req, res) => {
         }
 
         console.log('Final mapping to Property model...');
+        // Auto-derive category if not provided
+        const derivedCategory = propertyData.category || (
+            ['Shop', 'Office', 'Factory', 'Warehouse'].includes(propertyData.propertyType)
+                ? 'Commercial' : 'Residential'
+        );
+
         const property = await Property.create({
             owner: req.user._id,
             title: propertyData.title,
             propertyType: propertyData.propertyType,
+            category: derivedCategory,
             listingType: propertyData.listingType || 'Rent',
             description: propertyData.description,
             location: {
@@ -170,6 +177,7 @@ export const getProperties = async (req, res) => {
             search,
             city,
             propertyType,
+            category,
             minRent,
             maxRent,
             furnishing,
@@ -191,6 +199,7 @@ export const getProperties = async (req, res) => {
 
         if (city) filter['location.city'] = { $regex: city, $options: 'i' };
         if (propertyType) filter.propertyType = propertyType;
+        if (category) filter.category = category;
         if (furnishing) filter['residential.furnishing'] = furnishing;
         if (bhkType) filter['residential.bhkType'] = bhkType;
         if (verified === 'true') filter.verified = true;
@@ -376,9 +385,16 @@ export const updateProperty = async (req, res) => {
         const finalImages = [...keptImages, ...newImages];
 
         // Apply all updates
+        // Auto-derive category if not provided
+        const updatedCategory = updates.category || (
+            ['Shop', 'Office', 'Factory', 'Warehouse'].includes(updates.propertyType)
+                ? 'Commercial' : 'Residential'
+        );
+
         Object.assign(property, {
             title: updates.title,
             propertyType: updates.propertyType,
+            category: updatedCategory,
             listingType: updates.listingType,
             description: updates.description,
             location: updates.location,

@@ -86,9 +86,17 @@ function App() {
         {/* Role Selection — requires auth but no role yet */}
         <Route path="/select-role" element={<SelectRole />} />
 
-        {/* Public Knowledge Base accessible from Landing Page Nav */}
-        <Route path="/blogs" element={<TenantBlogs />} />
-        <Route path="/blogs/:slug" element={<TenantBlogDetails />} />
+        {/* Knowledge Base — requires login (redirects if not authenticated) */}
+        <Route path="/blogs" element={
+            <ProtectedRoute>
+                <TenantBlogs />
+            </ProtectedRoute>
+        } />
+        <Route path="/blogs/:slug" element={
+            <ProtectedRoute>
+                <TenantBlogDetails />
+            </ProtectedRoute>
+        } />
 
         {/* Tenant Routes */}
         <Route

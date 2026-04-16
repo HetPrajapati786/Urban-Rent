@@ -17,6 +17,11 @@ const propertySchema = new mongoose.Schema(
             enum: ['House', 'Apartment', 'Shop', 'Office', 'Factory', 'Warehouse'],
             required: true,
         },
+        category: {
+            type: String,
+            enum: ['Residential', 'Commercial', 'PG/Hostel'],
+            default: 'Residential',
+        },
         listingType: {
             type: String,
             enum: ['Rent', 'Lease'],

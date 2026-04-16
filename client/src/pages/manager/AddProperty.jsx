@@ -28,6 +28,7 @@ function LocationMarker({ position, setPosition }) {
 }
 
 const PROPERTY_TYPES = ['House', 'Apartment', 'Shop', 'Office', 'Factory', 'Warehouse'];
+const CATEGORIES = ['Residential', 'Commercial', 'PG/Hostel'];
 const LISTING_TYPES = ['Rent', 'Lease'];
 const FURNISHING_TYPES = ['Furnished', 'Semi-Furnished', 'Unfurnished'];
 const BHK_TYPES = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '4+ BHK'];
@@ -76,6 +77,7 @@ export default function AddProperty() {
         // Step 1: Basic Info
         title: '',
         propertyType: '',
+        category: '',
         listingType: 'Rent',
         description: '',
 
@@ -153,6 +155,7 @@ export default function AddProperty() {
                 setFormData({
                     title: p.title || '',
                     propertyType: p.propertyType || '',
+                    category: p.category || '',
                     listingType: p.listingType || 'Rent',
                     description: p.description || '',
                     country: p.location?.country || 'India',
@@ -286,7 +289,19 @@ export default function AddProperty() {
             case 1:
                 if (!formData.title.trim()) errors.push('Property Title is required');
                 if (!formData.propertyType) errors.push('Property Type is required');
+                if (!formData.category) errors.push('Property Category is required');
                 if (!formData.description.trim()) errors.push('Description is required');
+                // Validate category-propertyType consistency
+                if (formData.category && formData.propertyType) {
+                    const isCommType = ['Shop', 'Office', 'Factory', 'Warehouse'].includes(formData.propertyType);
+                    const isResType = ['House', 'Apartment'].includes(formData.propertyType);
+                    if (formData.category === 'Commercial' && isResType) {
+                        errors.push(`Cannot set category "Commercial" for a ${formData.propertyType}. Change property type to Shop, Office, Factory, or Warehouse.`);
+                    }
+                    if ((formData.category === 'Residential' || formData.category === 'PG/Hostel') && isCommType) {
+                        errors.push(`Cannot set category "${formData.category}" for a ${formData.propertyType}. Change property type to House or Apartment.`);
+                    }
+                }
                 break;
             case 2:
                 if (!formData.state.trim()) errors.push('State is required');
@@ -343,6 +358,7 @@ export default function AddProperty() {
                 const updateData = {
                     title: rest.title,
                     propertyType: rest.propertyType,
+                    category: rest.category,
                     listingType: rest.listingType,
                     description: rest.description,
                     location: {
@@ -580,7 +596,21 @@ export default function AddProperty() {
                                     <FormField label="Property Type" required>
                                         <select
                                             value={formData.propertyType}
-                                            onChange={e => updateField('propertyType', e.target.value)}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                updateField('propertyType', val);
+                                                // Auto-derive category based on propertyType
+                                                if (['Shop', 'Office', 'Factory', 'Warehouse'].includes(val)) {
+                                                    updateField('category', 'Commercial');
+                                                } else if (['House', 'Apartment'].includes(val)) {
+                                                    // Only reset to Residential if current category is Commercial (invalid)
+                                                    if (formData.category === 'Commercial' || !formData.category) {
+                                                        updateField('category', 'Residential');
+                                                    }
+                                                } else {
+                                                    updateField('category', '');
+                                                }
+                                            }}
                                             className="form-input"
                                             id="property-type"
                                         >
@@ -609,6 +639,50 @@ export default function AddProperty() {
                                         </div>
                                     </FormField>
                                 </div>
+
+                                {/* Category Selector */}
+                                <FormField label="Property Category" required>
+                                    <div className="flex gap-3">
+                                        {CATEGORIES.map(cat => {
+                                            const isCommType = ['Shop', 'Office', 'Factory', 'Warehouse'].includes(formData.propertyType);
+                                            const isResType = ['House', 'Apartment'].includes(formData.propertyType);
+                                            // PG/Hostel only for residential types
+                                            const disabled = 
+                                                (cat === 'PG/Hostel' && isCommType) ||
+                                                (cat === 'Commercial' && isResType) ||
+                                                (cat === 'Residential' && isCommType) ||
+                                                (!formData.propertyType);
+                                            return (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    disabled={disabled}
+                                                    onClick={() => updateField('category', cat)}
+                                                    className={`flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all duration-300 ${
+                                                        formData.category === cat
+                                                            ? cat === 'PG/Hostel'
+                                                                ? 'border-violet-500 bg-violet-50 text-violet-700'
+                                                                : cat === 'Commercial'
+                                                                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                                                    : 'border-primary-500 bg-primary-50 text-primary-700'
+                                                            : disabled 
+                                                                ? 'border-dark-100 text-dark-300 bg-dark-50 cursor-not-allowed opacity-50'
+                                                                : 'border-dark-200 text-dark-500 hover:border-dark-300'
+                                                    }`}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {formData.propertyType && (
+                                        <p className="text-dark-400 text-xs mt-2">
+                                            {['House', 'Apartment'].includes(formData.propertyType)
+                                                ? '💡 House/Apartment can be listed as Residential or PG/Hostel.'
+                                                : '💡 Commercial property types are automatically categorised as Commercial.'}
+                                        </p>
+                                    )}
+                                </FormField>
 
                                 <FormField label="Property Description" required>
                                     <textarea
