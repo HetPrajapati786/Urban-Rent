@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { apiPost } from '../utils/api';
+import { isFreshImpersonation, clearImpersonation } from '../utils/impersonation';
 
 /**
  * UserSync component — Silent background synchronizer to ensure 
@@ -21,9 +22,21 @@ export default function UserSync() {
         const PRESERVE_KEYS = ['urbanrent_tenant_sidebar', 'urbanrent_manager_sidebar'];
 
         if (isSignedIn && user) {
-            const storedUserId = localStorage.getItem(STORED_KEY);
             const currentUserId = user.id;
 
+            // Stale impersonation cleanup:
+            // If a real Clerk user is signed in AND the impersonation is NOT fresh
+            // (i.e., no ?impersonate= URL param was used to open this tab),
+            // then any sessionStorage impersonation key is stale garbage. Clean it.
+            if (!isFreshImpersonation() && sessionStorage.getItem('urbanrent_impersonate')) {
+                clearImpersonation();
+                // No reload needed - isImpersonating() already returns false
+                // because _isFresh is false. The UI will be correct on next render.
+            }
+
+            // ── Cross-account multi-tab detection ─────────────────────────
+            // If a different Clerk user signs in (in any tab), invalidate cached data
+            const storedUserId = localStorage.getItem(STORED_KEY);
             if (storedUserId && storedUserId !== currentUserId) {
                 // A DIFFERENT user is now signed in — purge all stale session data
                 const allKeys = Object.keys(localStorage);
@@ -45,7 +58,9 @@ export default function UserSync() {
             // Signed out — clear the tracked user ID so next login is clean
             localStorage.removeItem(STORED_KEY);
             // Also clear any impersonation leftovers
-            localStorage.removeItem('urbanrent_impersonate');
+            sessionStorage.removeItem('urbanrent_impersonate');
+            sessionStorage.removeItem('urbanrent_impersonate_data');
+            localStorage.removeItem('urbanrent_impersonate'); // cleaning up any older bugs
             localStorage.removeItem('urbanrent_impersonate_data');
         }
     }, [isLoaded, isSignedIn, user]);

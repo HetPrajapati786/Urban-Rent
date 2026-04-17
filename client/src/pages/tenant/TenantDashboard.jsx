@@ -4,6 +4,7 @@ import { useUser, SignedIn } from '@clerk/clerk-react';
 import TenantLayout from '../../layouts/TenantLayout';
 import TenantPropertyCard from '../../components/tenant/TenantPropertyCard';
 import { apiGet, apiPost } from '../../utils/api';
+import { isImpersonating, getImpersonatingId } from '../../utils/impersonation';
 
 const DEMO_STATS = [
     { 
@@ -127,8 +128,8 @@ export default function TenantDashboard() {
     const isDemo = location.pathname.startsWith('/demo');
     const base = isDemo ? '/demo/tenant' : '/tenant';
 
-    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
-    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
+    const isImpersonating_ = isImpersonating();
+    const impersonatedData = isImpersonating_ ? JSON.parse(sessionStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
 
     const [applications, setApplications] = useState([]);
     const [stats, setStats] = useState(DEMO_STATS);
@@ -256,7 +257,7 @@ export default function TenantDashboard() {
                 {/* Welcome */}
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-dark-900 mb-1">
-                        Welcome back, {isImpersonating && impersonatedData?.name ? (
+                        Welcome back, {isImpersonating_ && impersonatedData?.name ? (
                             <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
                         ) : user?.firstName ? (
                             <span className="text-primary-600">{user.firstName}</span>

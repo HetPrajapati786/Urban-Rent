@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserButton, SignedIn, useUser } from '@clerk/clerk-react';
+import { isImpersonating, clearImpersonation } from '../utils/impersonation';
 import NotificationDropdown from '../components/common/NotificationDropdown';
 import ChatWidget from '../components/ChatWidget';
 import Sidebar from '../components/common/Sidebar';
@@ -30,8 +31,8 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
         localStorage.setItem('urbanrent_manager_sidebar', state);
     };
 
-    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
-    const impersonatedData = isImpersonating ? JSON.parse(localStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
+    const isImpersonating_ = isImpersonating();
+    const impersonatedData = isImpersonating_ ? JSON.parse(sessionStorage.getItem('urbanrent_impersonate_data') || '{}') : null;
 
     const resolvePath = (path) => isDemo ? `/demo${path}` : path;
 
@@ -50,7 +51,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
 
     return (
         <div className="flex h-screen overflow-hidden bg-dark-50 font-sans">
-            {isImpersonating && (
+            {isImpersonating_ && (
                 <div className="fixed top-0 left-0 right-0 z-[60] bg-indigo-600 text-white px-4 py-2 flex items-center justify-between text-xs font-bold shadow-md">
                     <span className="flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
@@ -58,8 +59,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                     </span>
                     <button 
                         onClick={() => {
-                            localStorage.removeItem('urbanrent_impersonate');
-                            localStorage.removeItem('urbanrent_impersonate_data');
+                            clearImpersonation();
                             window.location.href = isDemo ? '/demo/admin/users' : '/admin/users';
                         }}
                         className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded-md transition-colors"
@@ -79,7 +79,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                 isDemo={isDemo}
                 brandLink={isDemo ? '/demo/manager' : '/manager/dashboard'}
                 bottomContent={(expanded) => (
-                    isImpersonating ? (
+                    isImpersonating_ ? (
                         <div className={`flex items-center gap-3 ${expanded ? 'px-2' : 'justify-center'}`} title="Impersonating">
                             <div className={`rounded-full border border-indigo-500 overflow-hidden flex-shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.5)] bg-dark-50 ${expanded ? 'w-10 h-10' : 'w-10 h-10'}`}>
                                 {impersonatedData?.avatar ? (
@@ -124,7 +124,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                 )}
             />
 
-            <div className={`flex-1 overflow-y-auto custom-scrollbar flex flex-col min-w-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pr-4 ${sidebarOpen ? 'ml-[288px]' : 'ml-[112px]'} ${isImpersonating ? 'mt-8' : ''}`}>
+            <div className={`flex-1 overflow-y-auto custom-scrollbar flex flex-col min-w-0 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pr-4 ${sidebarOpen ? 'ml-[288px]' : 'ml-[112px]'} ${isImpersonating_ ? 'mt-8' : ''}`}>
                 {/* Floating Header - only show in dashboard, not on landing/public pages */}
                 {!isPublicPage && (
                     <div className="flex-shrink-0 pt-4 pb-2 z-40">
@@ -147,7 +147,7 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
                                 </nav>
                             ) : (
                                 <div className="flex-shrink-0 font-bold text-dark-900 flex items-center gap-2 text-lg">
-                                    Welcome back, {isImpersonating && impersonatedData?.name ? (
+                                    Welcome back, {isImpersonating_ && impersonatedData?.name ? (
                                         <span className="text-indigo-600">{impersonatedData.name.split(' ')[0]}</span>
                                     ) : user?.firstName ? (
                                         <span className="text-blue-600">{user.firstName}</span>
@@ -157,9 +157,11 @@ export default function ManagerLayout({ children, breadcrumbs, isPublicPage }) {
 
                             {/* Right Actions */}
                             <div className="flex items-center gap-4 ml-auto sm:ml-0">
-                                <span className={`hidden sm:inline-block px-3 py-1 border rounded-lg text-[10px] font-black uppercase tracking-wider ${isImpersonating ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
-                                    {isImpersonating ? 'Impersonating Manager' : 'Manager Profile'}
-                                </span>
+                                {isImpersonating_ && (
+                                    <span className="hidden sm:inline-block px-3 py-1 border rounded-lg text-[10px] font-black uppercase tracking-wider bg-indigo-50 border-indigo-200 text-indigo-700">
+                                        Impersonating Manager
+                                    </span>
+                                )}
                                 <div className="flex items-center gap-2">
                                     <NotificationDropdown />
                                     <ChatWidget />

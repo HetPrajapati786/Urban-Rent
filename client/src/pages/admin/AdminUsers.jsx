@@ -82,17 +82,17 @@ export default function AdminUsers() {
                     console.warn('Impersonation notification failed:', impErr.message);
                 }
 
-                localStorage.setItem('urbanrent_impersonate', user.clerkId);
-                localStorage.setItem('urbanrent_impersonate_data', JSON.stringify({
+                sessionStorage.setItem('urbanrent_impersonate', user.clerkId);
+                sessionStorage.setItem('urbanrent_impersonate_data', JSON.stringify({
                     name: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User',
                     avatar: user.avatar || '',
                     role: user.role || ''
                 }));
                 let target = '';
                 if (user.role === 'tenant') {
-                    target = isDemo ? '/demo/tenant/dashboard' : '/tenant/dashboard';
+                    target = isDemo ? `/demo/tenant/dashboard?impersonate=${user.clerkId}` : `/tenant/dashboard?impersonate=${user.clerkId}`;
                 } else {
-                    target = isDemo ? '/demo/manager/dashboard' : '/manager/dashboard';
+                    target = isDemo ? `/demo/manager/dashboard?impersonate=${user.clerkId}` : `/manager/dashboard?impersonate=${user.clerkId}`;
                 }
                 window.open(target, '_blank');
                 closeModal();

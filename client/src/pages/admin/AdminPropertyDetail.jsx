@@ -31,6 +31,7 @@ export default function AdminPropertyDetail() {
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    const [errorModal, setErrorModal] = useState(null);
 
     // Map custom icon
     const customIcon = new L.Icon({
@@ -165,9 +166,16 @@ export default function AdminPropertyDetail() {
                         
                         <button 
                             onClick={() => {
-                                if (!p.manager?.clerkId) return alert('Manager information missing. Cannot impersonate.');
-                                localStorage.setItem('urbanrent_impersonate', p.manager.clerkId);
-                                window.open(isDemo ? `/demo/manager/edit-property/${p._id}` : `/manager/edit-property/${p._id}`, '_blank');
+                                const clerkId = p.manager?.clerkId || p.owner?.clerkId;
+                                if (!clerkId) return setErrorModal('Manager information missing. Cannot impersonate.');
+                                sessionStorage.setItem('urbanrent_impersonate', clerkId);
+                                sessionStorage.setItem('urbanrent_impersonate_data', JSON.stringify({
+                                    name: p.owner?.firstName ? `${p.owner.firstName} ${p.owner.lastName || ''}` : 'Manager',
+                                    avatar: p.owner?.avatar || '',
+                                    role: 'manager'
+                                }));
+                                const url = isDemo ? `/demo/manager/edit-property/${p._id}?impersonate=${clerkId}` : `/manager/edit-property/${p._id}?impersonate=${clerkId}`;
+                                window.open(url, '_blank');
                             }} 
                             className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-all flex items-center gap-1.5"
                             title="Impersonate Manager and Edit Property"
@@ -503,6 +511,30 @@ export default function AdminPropertyDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Error Modal */}
+            {errorModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setErrorModal(null)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-dark-900 mb-2">Impersonation Failed</h3>
+                        <p className="text-dark-500 text-sm mb-6 pb-2">
+                            {errorModal}
+                        </p>
+                        <button
+                            onClick={() => setErrorModal(null)}
+                            className="w-full py-3 rounded-xl font-bold text-white bg-dark-900 hover:bg-dark-800 transition-all text-sm active:scale-[0.98]"
+                        >
+                            Understood
+                        </button>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

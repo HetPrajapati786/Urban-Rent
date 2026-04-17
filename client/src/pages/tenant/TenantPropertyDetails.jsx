@@ -9,6 +9,7 @@ import PropertyMediaGallery from '../../components/PropertyMediaGallery';
 import TenantPropertyCard from '../../components/tenant/TenantPropertyCard';
 import PropertyReviews from '../../components/tenant/PropertyReviews';
 import { apiGet, apiPost } from '../../utils/api';
+import { isImpersonating as isImpersonating_fn } from '../../utils/impersonation';
 
 // Fix default Leaflet marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -45,7 +46,7 @@ export default function TenantPropertyDetails() {
     const { id } = useParams();
     const location = useLocation();
     const isDemo = location.pathname.startsWith('/demo');
-    const isImpersonating = !!localStorage.getItem('urbanrent_impersonate');
+    const isImpersonating = isImpersonating_fn();
     const isRestrictedDemo = isDemo && !isImpersonating;
 
     const [property, setProperty] = useState(null);

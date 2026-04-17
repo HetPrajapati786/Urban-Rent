@@ -1,3 +1,5 @@
+import { getImpersonatingId } from './impersonation';
+
 const API_BASE = 'http://localhost:5000/api';
 
 /**
@@ -7,8 +9,8 @@ const API_BASE = 'http://localhost:5000/api';
 const getClerkUserId = () => {
     const isAdminRoute = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/demo/admin');
 
-    // Check for active impersonation
-    const impersonatedId = localStorage.getItem('urbanrent_impersonate');
+    // Use module-level impersonation state (immune to re-renders and storage clearing)
+    const impersonatedId = getImpersonatingId();
     if (impersonatedId && !isAdminRoute) {
         return impersonatedId;
     }

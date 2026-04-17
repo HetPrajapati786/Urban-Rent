@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useLocation } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { isImpersonating, clearImpersonation } from '../utils/impersonation';
 import SuspensionModal from './SuspensionModal';
 import PropertyVacateNoticeModal from './PropertyVacateNoticeModal';
 import AccountDeletedModal from './AccountDeletedModal';
@@ -27,7 +28,7 @@ export default function SuspensionGuard() {
     // Never run on admin routes — admin panel has its own auth system
     // and should never react to user-targeted socket events
     const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/demo/admin');
-    const isImpersonationTab = !!localStorage.getItem('urbanrent_impersonate');
+    const isImpersonationTab = isImpersonating();
 
     // Modal states - only one should be active at a time
     const [suspended, setSuspended] = useState(false);
@@ -47,16 +48,13 @@ export default function SuspensionGuard() {
     // Sign out handler — also cleans up impersonation state
     const handleSignOut = useCallback(async () => {
         try {
-            // Clean up any impersonation state to prevent re-login trapping
-            localStorage.removeItem('urbanrent_impersonate');
-            localStorage.removeItem('urbanrent_impersonate_data');
+            clearImpersonation();
             if (clerk && clerk.signOut) {
                 await clerk.signOut();
             }
             window.location.href = '/';
         } catch {
-            localStorage.removeItem('urbanrent_impersonate');
-            localStorage.removeItem('urbanrent_impersonate_data');
+            clearImpersonation();
             window.location.href = '/';
         }
     }, [clerk]);

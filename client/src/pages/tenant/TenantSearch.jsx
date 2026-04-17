@@ -396,42 +396,42 @@ export default function TenantSearch() {
                                             icon={p.verified ? verifiedIcon : p.boosted ? boostedIcon : new L.Icon.Default()}
                                         >
                                             <Popup>
-                                                <div className="w-[300px] overflow-hidden rounded-xl bg-white" style={{ margin: '-14px -20px -14px -20px' }}>
+                                                <div className="w-[320px] overflow-hidden rounded-xl bg-white shadow-lg" style={{ margin: '-14px -20px -14px -20px' }}>
                                                     <Link 
                                                         to={isDemo ? `/demo/tenant/properties/${p._id}` : `/tenant/properties/${p._id}`}
                                                         className="flex items-stretch group"
                                                     >
-                                                        {/* Image on Left - fixed 80px height */}
-                                                        <div className="relative w-24 h-20 flex-shrink-0 bg-dark-50 overflow-hidden">
+                                                        {/* Image on Left - matches stretching height */}
+                                                        <div className="relative w-[120px] flex-shrink-0 bg-dark-50 overflow-hidden">
                                                             {p.images?.[0]?.url ? (
-                                                                <img src={p.images[0].url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                                <img src={p.images[0].url} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center">
-                                                                    <svg className="w-6 h-6 text-dark-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                                    <svg className="w-8 h-8 text-dark-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                                 </div>
                                                             )}
-                                                            <div className="absolute top-1 left-1 flex flex-col gap-0.5">
-                                                                {p.verified && <span className="px-1 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded shadow-sm leading-none">VERIFIED</span>}
+                                                            <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                                                {p.verified && <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-bold rounded shadow-sm leading-none z-10">VERIFIED</span>}
                                                             </div>
                                                         </div>
                                                         
                                                         {/* Info on Right */}
-                                                        <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                                                            <div className="flex items-start justify-between gap-1 mb-0.5">
-                                                                <p className="font-bold text-xs text-dark-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-2">{p.title}</p>
-                                                            </div>
-                                                            <div className="flex items-center gap-1 mb-2 text-dark-400">
-                                                                <svg className="w-3 h-3 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" /></svg>
-                                                                <span className="text-[10px] truncate">{p.location?.area}, {p.location?.city}</span>
+                                                        <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                                                            <div>
+                                                                <p className="font-bold text-sm text-dark-900 leading-tight group-hover:text-primary-600 transition-colors line-clamp-1 mb-1">{p.title}</p>
+                                                                <div className="flex items-center gap-1 text-dark-400">
+                                                                    <svg className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" /></svg>
+                                                                    <span className="text-xs truncate">{p.location?.area}, {p.location?.city}</span>
+                                                                </div>
                                                             </div>
                                                             
-                                                            <div className="flex items-center justify-between mt-auto">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[9px] font-bold text-dark-400 uppercase tracking-wider leading-none mb-0.5">Rent</span>
+                                                            <div className="flex items-end justify-between mt-3">
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <span className="text-[10px] font-bold text-dark-400 uppercase tracking-wider leading-none">Rent</span>
                                                                     <span className="text-primary-600 font-black text-sm leading-none">₹{(p.pricing?.monthlyRent || 0).toLocaleString()}</span>
                                                                 </div>
                                                                 <span className="flex-shrink-0 bg-primary-50 text-primary-600 rounded-full p-1.5 group-hover:bg-primary-600 group-hover:text-white transition-colors">
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                                                                 </span>
                                                             </div>
                                                         </div>

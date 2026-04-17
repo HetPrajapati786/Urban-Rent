@@ -118,7 +118,7 @@ export const getAllProperties = async (req, res) => {
 
         const [properties, total] = await Promise.all([
             Property.find(filter)
-                .populate('owner', 'firstName lastName email avatar role')
+                .populate('owner', 'firstName lastName email avatar role clerkId')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
@@ -247,7 +247,7 @@ export const getAllUsers = async (req, res) => {
 export const getPropertyDetail = async (req, res) => {
     try {
         const property = await Property.findById(req.params.id)
-            .populate('owner', 'firstName lastName email avatar phone role createdAt')
+            .populate('owner', 'firstName lastName email avatar phone role createdAt clerkId')
             .lean();
 
         if (!property) {
